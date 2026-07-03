@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DC Prep — Classroom Readiness</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:    #1a3a5c;
+  --teal:    #0d9488;
+  --amber:   #f59e0b;
+  --red:     #dc2626;
+  --slate:   #475569;
+  --muted:   #94a3b8;
+  --border:  #e2e8f0;
+  --bg:      #f1f5f9;
+  --card:    #ffffff;
+  --lt:      #f8fafc;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--navy);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--navy);
+  padding: 24px 32px 20px;
+}
+.header-label {
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.4);
+  margin-bottom: 6px;
+}
+.header-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -.3px;
+}
+.header-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,.4);
+  margin-top: 4px;
+}
+
+/* ── SUMMARY STRIP ── */
+.summary-strip {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+}
+.school-tab {
+  padding: 16px 20px 14px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  transition: all .15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 110px;
+}
+.school-tab:hover { background: var(--lt); }
+.school-tab.active { border-bottom-color: var(--teal); }
+.school-tab-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate);
+}
+.school-tab.active .school-tab-name { color: var(--navy); }
+.school-tab-pct {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+.pct-full  { color: var(--teal); }
+.pct-mid   { color: var(--amber); }
+.pct-low   { color: var(--red); }
+.school-tab-sub {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* ── MAIN ── */
+.main {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+}
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+/* ── SCHOOL PANEL ── */
+.school-panel { display: none; }
+.school-panel.active { display: block; }
+
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.panel-school { font-size: 20px; font-weight: 600; color: var(--navy); }
+.panel-stats {
+  display: flex;
+  gap: 20px;
+}
+.panel-stat { text-align: right; }
+.panel-stat-val { font-size: 20px; font-weight: 700; }
+.panel-stat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+
+/* ── CLASSROOM LIST ── */
+.cr-section { margin-bottom: 24px; }
+.cr-section-hdr {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 8px 0 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+.cr-section-hdr.needs  { color: var(--red); }
+.cr-section-hdr.minor  { color: var(--amber); }
+.cr-section-hdr.full   { color: var(--teal); }
+.cr-section-hdr.unseen { color: var(--muted); }
+
+.cr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.cr-row:last-child { border-bottom: none; }
+.cr-left { display: flex; align-items: center; gap: 10px; }
+.cr-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+}
+.dot-full   { background: var(--teal); }
+.dot-minor  { background: var(--amber); }
+.dot-needs  { background: var(--red); }
+.dot-unseen { background: var(--border); }
+.cr-name { font-size: 14px; font-weight: 500; color: var(--navy); }
+.cr-grade { font-size: 12px; color: var(--muted); margin-left: 2px; }
+.cr-right { text-align: right; }
+.cr-date  { font-size: 11px; color: var(--muted); }
+.cr-assessment {
+  font-size: 11px; font-weight: 600; padding: 2px 8px;
+  border-radius: 20px; white-space: nowrap;
+}
+.asmnt-full  { background: #f0fdf4; color: #166534; }
+.asmnt-minor { background: #fef9c3; color: #854d0e; }
+.asmnt-needs { background: #fef2f2; color: #991b1b; }
+.asmnt-none  { background: var(--lt); color: var(--muted); border: 0.5px solid var(--border); }
+
+/* ── LOADING / ERROR ── */
+.state-msg {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.error-box {
+  background: #fef2f2;
+  border: 0.5px solid #fecaca;
+  border-radius: 8px;
+  padding: 16px 20px;
+  color: #991b1b;
+  font-size: 13px;
+  margin: 24px 0;
+  line-height: 1.6;
+}
+
+/* ── UPDATED ── */
+.updated {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  padding: 16px 0 0;
+}
+
+@media (max-width: 600px) {
+  .header { padding: 20px 16px 16px; }
+  .summary-strip { padding: 0 8px; }
+  .main { padding: 20px 16px 48px; }
+  .school-tab { min-width: 90px; padding: 14px 12px 12px; }
+  .school-tab-pct { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-label">DC Prep Operations</div>
+  <div class="header-title">Classroom Readiness</div>
+  <div class="header-sub" id="header-sub">Beginning of Year SY 2026–27 &nbsp;·&nbsp; Loading…</div>
+</div>
+
+<div class="summary-strip" id="summary-strip">
+  <div class="state-msg" style="padding:20px">Loading school data…</div>
+</div>
+
+<div class="main">
+  <div id="loading" class="state-msg">Fetching latest submissions…</div>
+  <div id="error" style="display:none"></div>
+  <div id="panels"></div>
+  <div class="updated" id="updated"></div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPbhFWpzKX6S6seb1c0QKplVM22LjZG6bkGMBnTNopry6dDr5YGtffKKR3EsFQ77n5BQ/exec';
+
+const SCHOOLS = [
+  { code: 'AEC', name: 'Anacostia Elementary', full: 'Anacostia Elementary' },
+  { code: 'AMC', name: 'Anacostia Middle',     full: 'Anacostia Middle' },
+  { code: 'BEC', name: 'Benning Elementary',   full: 'Benning Elementary' },
+  { code: 'BMC', name: 'Benning Middle',       full: 'Benning Middle' },
+  { code: 'EEC', name: 'Edgewood Elementary',  full: 'Edgewood Elementary' },
+  { code: 'EMC', name: 'Edgewood Middle',      full: 'Edgewood Middle' },
+];
+
+const CLASSROOMS = {
+  AEC: [
+    {name:'American',    grade:'EC'}, {name:'Gallaudet',  grade:'EC'}, {name:'George Mason', grade:'EC'},
+    {name:'Johns Hopkins',grade:'EC'},{name:'Syracuse',   grade:'EC'}, {name:'Williams',     grade:'EC'},
+    {name:'Northwestern',grade:'K'},  {name:'UChicago',   grade:'K'},  {name:'UMichigan',    grade:'K'},
+    {name:'Gonzaga',     grade:'1'},  {name:'UOregon',    grade:'1'},  {name:'Pepperdine',   grade:'1'},
+    {name:'Morehouse',   grade:'2'},  {name:'Spelman',    grade:'2'},  {name:'Xavier',       grade:'2'},
+    {name:'Cornell',     grade:'3'},  {name:'Dartmouth',  grade:'3'},  {name:'UPenn',        grade:'3'},
+  ],
+  AMC: [
+    {name:'GWU',       grade:'4'}, {name:'Georgetown', grade:'4'}, {name:'Howard',    grade:'4'},
+    {name:'UMD',       grade:'5'}, {name:'UNC',        grade:'5'}, {name:'UVA',       grade:'5'},
+    {name:'FAMU',      grade:'6'}, {name:'Hampton',    grade:'6'}, {name:'Tuskegee',  grade:'6'},
+    {name:'Princeton', grade:'7'}, {name:'Stanford',   grade:'7'},
+    {name:'Harvard',   grade:'8'}, {name:'Yale',       grade:'8'},
+  ],
+  BEC: [
+    {name:'American',    grade:'EC'}, {name:'Gallaudet',  grade:'EC'}, {name:'George Mason', grade:'EC'},
+    {name:'Johns Hopkins',grade:'EC'},{name:'Syracuse',   grade:'EC'}, {name:'Williams',     grade:'EC'},
+    {name:'Northwestern',grade:'K'},  {name:'UChicago',   grade:'K'},  {name:'UMichigan',    grade:'K'},
+    {name:'Gonzaga',     grade:'1'},  {name:'UOregon',    grade:'1'},  {name:'Pepperdine',   grade:'1'},
+    {name:'Morehouse',   grade:'2'},  {name:'Spelman',    grade:'2'},  {name:'Xavier',       grade:'2'},
+    {name:'Cornell',     grade:'3'},  {name:'Dartmouth',  grade:'3'},  {name:'UPenn',        grade:'3'},
+  ],
+  BMC: [
+    {name:'GWU',       grade:'4'}, {name:'Georgetown', grade:'4'}, {name:'Howard',    grade:'4'},
+    {name:'UMD',       grade:'5'}, {name:'UNC',        grade:'5'}, {name:'UVA',       grade:'5'},
+    {name:'FAMU',      grade:'6'}, {name:'Hampton',    grade:'6'}, {name:'Tuskegee',  grade:'6'},
+    {name:'Princeton', grade:'7'}, {name:'Stanford',   grade:'7'},
+    {name:'Harvard',   grade:'8'}, {name:'Yale',       grade:'8'},
+  ],
+  EEC: [
+    {name:'American',    grade:'EC'}, {name:'Gallaudet',  grade:'EC'}, {name:'George Mason', grade:'EC'},
+    {name:'Johns Hopkins',grade:'EC'},{name:'Syracuse',   grade:'EC'},
+    {name:'Northwestern',grade:'K'},  {name:'UChicago',   grade:'K'},  {name:'UMichigan',    grade:'K'},
+    {name:'Gonzaga',     grade:'1'},  {name:'UOregon',    grade:'1'},  {name:'Pepperdine',   grade:'1'},
+    {name:'Morehouse',   grade:'2'},  {name:'Spelman',    grade:'2'},  {name:'Xavier',       grade:'2'},
+    {name:'Cornell',     grade:'3'},  {name:'Dartmouth',  grade:'3'},  {name:'UPenn',        grade:'3'},
+  ],
+  EMC: [
+    {name:'GWU',       grade:'4'}, {name:'Georgetown', grade:'4'}, {name:'Howard',    grade:'4'},
+    {name:'UMD',       grade:'5'}, {name:'UNC',        grade:'5'}, {name:'UVA',       grade:'5'},
+    {name:'FAMU',      grade:'6'}, {name:'Hampton',    grade:'6'}, {name:'Tuskegee',  grade:'6'},
+    {name:'Princeton', grade:'7'}, {name:'Stanford',   grade:'7'},
+    {name:'Harvard',   grade:'8'}, {name:'Yale',       grade:'8'},
+  ],
+};
+
+function gradeLabel(g) {
+  return g === 'EC' ? 'EC' : g === 'K' ? 'Kindergarten' : g + (g==='1'?'st':g==='2'?'nd':g==='3'?'rd':'th') + ' Grade';
+}
+
+function asmntSort(a) {
+  if (a === 'Not ready — return visit needed') return 0;
+  if (a === null) return 1;
+  if (a === 'Ready — minor items remain') return 2;
+  return 3; // Fully ready
+}
+
+function pctColor(pct) {
+  if (pct >= 80) return 'pct-full';
+  if (pct >= 50) return 'pct-mid';
+  return 'pct-low';
+}
+
+function formatDate(ts) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ── FETCH DATA ────────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const res  = await fetch(SCRIPT_URL + '?view=readiness');
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('loading').style.display = 'none';
+    render(data);
+
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    const eb = document.getElementById('error');
+    eb.style.display = '';
+    eb.innerHTML = `<div class="error-box">
+      <strong>Could not load readiness data.</strong><br>
+      Make sure the Apps Script is deployed and the URL is correct.<br><br>
+      <small>${err.message}</small>
+    </div>`;
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(data) {
+  // data.submissions: array of { campus_code, classroom, assessment, timestamp }
+  const subs = data.submissions || [];
+
+  // Build a map: campusCode+classroom → most recent submission
+  const latest = {};
+  subs.forEach(s => {
+    const key = s.campus_code + '|' + s.classroom;
+    if (!latest[key] || new Date(s.timestamp) > new Date(latest[key].timestamp)) {
+      latest[key] = s;
+    }
+  });
+
+  // Build summary strip + panels
+  const strip  = document.getElementById('summary-strip');
+  const panels = document.getElementById('panels');
+  strip.innerHTML  = '';
+  panels.innerHTML = '';
+
+  SCHOOLS.forEach((school, si) => {
+    const rooms    = CLASSROOMS[school.code] || [];
+    const total    = rooms.length;
+    const complete = rooms.filter(r => {
+      const sub = latest[school.code + '|' + r.name];
+      return sub && (sub.assessment === 'Fully ready' || sub.assessment === 'Ready — minor items remain');
+    }).length;
+    const notReady = rooms.filter(r => {
+      const sub = latest[school.code + '|' + r.name];
+      return sub && sub.assessment === 'Not ready — return visit needed';
+    }).length;
+    const unseen   = rooms.filter(r => !latest[school.code + '|' + r.name]).length;
+    const pct      = Math.round(complete / total * 100);
+
+    // Tab
+    const tab = document.createElement('div');
+    tab.className = 'school-tab' + (si === 0 ? ' active' : '');
+    tab.onclick = () => switchTab(school.code);
+    tab.id = 'tab-' + school.code;
+    tab.innerHTML = `
+      <div class="school-tab-pct ${pctColor(pct)}">${pct}%</div>
+      <div class="school-tab-name">${school.code}</div>
+      <div class="school-tab-sub">${complete}/${total} ready</div>`;
+    strip.appendChild(tab);
+
+    // Panel
+    const panel = document.createElement('div');
+    panel.className = 'school-panel' + (si === 0 ? ' active' : '');
+    panel.id = 'panel-' + school.code;
+
+    // Sort rooms by assessment priority
+    const sorted = [...rooms].sort((a, b) => {
+      const sa = latest[school.code + '|' + a.name];
+      const sb = latest[school.code + '|' + b.name];
+      const aa = sa ? sa.assessment : null;
+      const ab = sb ? sb.assessment : null;
+      const diff = asmntSort(aa) - asmntSort(ab);
+      if (diff !== 0) return diff;
+      return a.name.localeCompare(b.name);
+    });
+
+    // Group by assessment
+    const groups = [
+      { key: 'needs',  label: 'Return visit needed',    cls: 'needs',  filter: r => { const s=latest[school.code+'|'+r.name]; return s && s.assessment==='Not ready — return visit needed'; }},
+      { key: 'unseen', label: 'Not yet assessed',       cls: 'unseen', filter: r => !latest[school.code+'|'+r.name] },
+      { key: 'minor',  label: 'Ready — minor items',    cls: 'minor',  filter: r => { const s=latest[school.code+'|'+r.name]; return s && s.assessment==='Ready — minor items remain'; }},
+      { key: 'full',   label: 'Fully ready',            cls: 'full',   filter: r => { const s=latest[school.code+'|'+r.name]; return s && s.assessment==='Fully ready'; }},
+    ];
+
+    let panelHTML = `<div class="panel-header">
+      <div class="panel-school">${school.full}</div>
+      <div class="panel-stats">
+        <div class="panel-stat">
+          <div class="panel-stat-val" style="color:var(--red)">${notReady + unseen}</div>
+          <div class="panel-stat-lbl">Need attention</div>
+        </div>
+        <div class="panel-stat">
+          <div class="panel-stat-val" style="color:var(--teal)">${complete}/${total}</div>
+          <div class="panel-stat-lbl">Complete</div>
+        </div>
+      </div>
+    </div>`;
+
+    groups.forEach(g => {
+      const groupRooms = sorted.filter(g.filter);
+      if (!groupRooms.length) return;
+      panelHTML += `<div class="cr-section">
+        <div class="cr-section-hdr ${g.cls}">${g.label} &nbsp;(${groupRooms.length})</div>`;
+      groupRooms.forEach(r => {
+        const sub = latest[school.code + '|' + r.name];
+        const dateStr = sub ? formatDate(sub.timestamp) : null;
+        const asmntCls = g.key === 'full' ? 'asmnt-full' : g.key === 'minor' ? 'asmnt-minor' : g.key === 'needs' ? 'asmnt-needs' : 'asmnt-none';
+        const asmntTxt = g.key === 'unseen' ? 'Not assessed' : (sub ? sub.assessment.replace(' — return visit needed','').replace(' — minor items remain','') : '');
+        const dotCls   = g.key === 'full' ? 'dot-full' : g.key === 'minor' ? 'dot-minor' : g.key === 'needs' ? 'dot-needs' : 'dot-unseen';
+        panelHTML += `<div class="cr-row">
+          <div class="cr-left">
+            <div class="cr-dot ${dotCls}"></div>
+            <div><span class="cr-name">${r.name}</span><span class="cr-grade"> (${gradeLabel(r.grade)})</span></div>
+          </div>
+          <div class="cr-right">
+            <div class="cr-assessment ${asmntCls}">${asmntTxt}</div>
+            ${dateStr ? `<div class="cr-date">${dateStr}</div>` : ''}
+          </div>
+        </div>`;
+      });
+      panelHTML += '</div>';
+    });
+
+    panel.innerHTML = panelHTML;
+    panels.appendChild(panel);
+  });
+
+  const now = new Date();
+  document.getElementById('header-sub').textContent =
+    'Beginning of Year SY 2026–27  ·  ' + now.toLocaleDateString('en-US',{month:'long',day:'numeric'});
+  document.getElementById('updated').textContent =
+    'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+function switchTab(code) {
+  document.querySelectorAll('.school-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.school-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+code).classList.add('active');
+  document.getElementById('panel-'+code).classList.add('active');
+}
+
+loadData();
+// Auto-refresh every 2 minutes
+setInterval(loadData, 120000);
+</script>
+</body>
+</html>
