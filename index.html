@@ -43,13 +43,6 @@ body {
   background: var(--navy);
   padding: 24px 32px 20px;
 }
-.header-label {
-  font-size: 10px;
-  letter-spacing: 1.8px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.4);
-  margin-bottom: 6px;
-}
 .header-title {
   font-size: 24px;
   font-weight: 600;
@@ -71,7 +64,8 @@ body {
 }
 .school-tab {
   flex: 1;
-  padding: 10px 6px;
+  min-width: 0;
+  padding: 10px 4px;
   border-radius: 10px;
   background: var(--card);
   border: 1px solid var(--border);
@@ -82,6 +76,7 @@ body {
   gap: 2px;
   transition: all .15s;
   -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
 }
 .school-tab:hover { border-color: var(--teal); }
 .school-tab.active { background: var(--navy); border-color: var(--navy); }
@@ -89,12 +84,14 @@ body {
   font-size: 11px;
   font-weight: 600;
   color: var(--slate);
+  white-space: nowrap;
 }
 .school-tab.active .school-tab-name { color: rgba(255,255,255,.7); }
 .school-tab-pct {
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.1;
+  white-space: nowrap;
 }
 .pct-full  { color: var(--teal); }
 .pct-mid   { color: var(--amber); }
@@ -103,8 +100,14 @@ body {
 .school-tab-sub {
   font-size: 9px;
   color: var(--muted);
+  white-space: nowrap;
 }
 .school-tab.active .school-tab-sub { color: rgba(255,255,255,.5); }
+@media (max-width: 400px) {
+  .school-tab-pct { font-size: 14px; }
+  .school-tab-sub { display: none; }
+  .summary-strip { gap: 4px; padding: 8px; }
+}
 
 /* ── MAIN ── */
 .main {
@@ -176,7 +179,7 @@ body {
 .cr-name { font-size: 14px; font-weight: 500; color: var(--navy); }
 .cr-grade { font-size: 12px; color: var(--muted); margin-left: 2px; }
 .cr-right { text-align: right; }
-.cr-date  { font-size: 11px; color: var(--muted); }
+.cr-date  { font-size: 11px; color: var(--muted); margin-top: 3px; }
 .cr-assessment {
   font-size: 11px; font-weight: 600; padding: 2px 8px;
   border-radius: 20px; white-space: nowrap;
@@ -225,9 +228,8 @@ body {
 <body>
 
 <div class="header">
-  <div class="header-label">DC Prep Operations</div>
   <div class="header-title">Classroom Readiness</div>
-  <div class="header-sub" id="header-sub">Beginning of Year SY 2026–27 &nbsp;·&nbsp; Loading…</div>
+  <div class="header-sub" id="header-sub">Loading…</div>
 </div>
 
 <div class="summary-strip" id="summary-strip">
@@ -445,11 +447,13 @@ function render(data) {
         panelHTML += `<div class="cr-row">
           <div class="cr-left">
             <div class="cr-dot ${dotCls}"></div>
-            <div><span class="cr-name">${r.name}</span><span class="cr-grade"> (${gradeLabel(r.grade)})</span></div>
-          </div>
-          <div class="cr-right">
-            <div class="cr-assessment ${asmntCls}">${asmntTxt}</div>
-            ${dateStr ? `<div class="cr-date">${dateStr}</div>` : ''}
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span class="cr-name">${r.name}</span><span class="cr-grade">(${gradeLabel(r.grade)})</span>
+                <span class="cr-assessment ${asmntCls}">${asmntTxt}</span>
+              </div>
+              ${dateStr ? `<div class="cr-date">Last assessment: ${dateStr}</div>` : ''}
+            </div>
           </div>
         </div>`;
       });
@@ -461,8 +465,8 @@ function render(data) {
   });
 
   const now = new Date();
-  document.getElementById('header-sub').textContent =
-    'Beginning of Year SY 2026–27  ·  ' + now.toLocaleDateString('en-US',{month:'long',day:'numeric'});
+  const monthDay = now.toLocaleDateString('en-US',{month:'long',day:'numeric'});
+  document.getElementById('header-sub').textContent = monthDay.charAt(0).toUpperCase() + monthDay.slice(1);
   document.getElementById('updated').textContent =
     'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
