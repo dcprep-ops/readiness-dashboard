@@ -32,7 +32,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  background: var(--bg);
+  background: #fff;
   color: var(--navy);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
@@ -64,51 +64,54 @@ body {
 
 /* ── SUMMARY STRIP ── */
 .summary-strip {
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  padding: 0 32px;
+  background: #f1f5f9;
+  padding: 10px 12px;
   display: flex;
-  gap: 0;
-  overflow-x: auto;
+  gap: 6px;
 }
 .school-tab {
-  padding: 16px 20px 14px;
+  flex: 1;
+  padding: 10px 6px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
   cursor: pointer;
-  border-bottom: 3px solid transparent;
-  white-space: nowrap;
-  transition: all .15s;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  min-width: 110px;
+  gap: 2px;
+  transition: all .15s;
+  -webkit-tap-highlight-color: transparent;
 }
-.school-tab:hover { background: var(--lt); }
-.school-tab.active { border-bottom-color: var(--teal); }
+.school-tab:hover { border-color: var(--teal); }
+.school-tab.active { background: var(--navy); border-color: var(--navy); }
 .school-tab-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--slate);
 }
-.school-tab.active .school-tab-name { color: var(--navy); }
+.school-tab.active .school-tab-name { color: rgba(255,255,255,.7); }
 .school-tab-pct {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.1;
 }
 .pct-full  { color: var(--teal); }
 .pct-mid   { color: var(--amber); }
 .pct-low   { color: var(--red); }
+.school-tab.active .school-tab-pct { color: #fff; }
 .school-tab-sub {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--muted);
 }
+.school-tab.active .school-tab-sub { color: rgba(255,255,255,.5); }
 
 /* ── MAIN ── */
 .main {
   max-width: 840px;
   margin: 0 auto;
   padding: 28px 24px 60px;
+  background: #fff;
 }
 
 /* ── SECTION LABEL ── */
@@ -127,18 +130,16 @@ body {
 
 .panel-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  gap: 12px;
 }
-.panel-school { font-size: 20px; font-weight: 600; color: var(--navy); }
-.panel-stats {
-  display: flex;
-  gap: 20px;
-}
+.panel-school { font-size: 18px; font-weight: 600; color: var(--navy); }
+.panel-stats { display: flex; gap: 20px; flex-shrink: 0; }
 .panel-stat { text-align: right; }
-.panel-stat-val { font-size: 20px; font-weight: 700; }
-.panel-stat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+.panel-stat-val { font-size: 22px; font-weight: 700; line-height: 1; }
+.panel-stat-lbl { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-top: 2px; }
 
 /* ── CLASSROOM LIST ── */
 .cr-section { margin-bottom: 24px; }
@@ -386,9 +387,9 @@ function render(data) {
     tab.onclick = () => switchTab(school.code);
     tab.id = 'tab-' + school.code;
     tab.innerHTML = `
-      <div class="school-tab-pct ${pctColor(pct)}">${pct}%</div>
       <div class="school-tab-name">${school.code}</div>
-      <div class="school-tab-sub">${complete}/${total} ready</div>`;
+      <div class="school-tab-pct ${pctColor(pct)}">${complete} <span style="font-size:13px;font-weight:500">of ${total}</span></div>
+      <div class="school-tab-sub">complete</div>`;
     strip.appendChild(tab);
 
     // Panel
@@ -415,15 +416,16 @@ function render(data) {
       { key: 'full',   label: 'Fully ready',            cls: 'full',   filter: r => { const s=latest[school.code+'|'+r.name]; return s && s.assessment==='Fully ready'; }},
     ];
 
+    const needAttn = notReady + unseen;
     let panelHTML = `<div class="panel-header">
       <div class="panel-school">${school.full}</div>
       <div class="panel-stats">
         <div class="panel-stat">
-          <div class="panel-stat-val" style="color:var(--red)">${notReady + unseen}</div>
+          <div class="panel-stat-val" style="color:var(--red)">${needAttn}</div>
           <div class="panel-stat-lbl">Need attention</div>
         </div>
         <div class="panel-stat">
-          <div class="panel-stat-val" style="color:var(--teal)">${complete}/${total}</div>
+          <div class="panel-stat-val" style="color:var(--teal)">${complete}</div>
           <div class="panel-stat-lbl">Complete</div>
         </div>
       </div>
