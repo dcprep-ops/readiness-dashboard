@@ -62,18 +62,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .loading-row td{color:var(--muted);font-style:italic;text-align:center;padding:20px}
 .empty-msg{color:var(--muted);font-size:13px;padding:40px 0;text-align:center}
 
-/* ── overall tab — stacked bar chart ── */
-.net-summary{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:24px}
-.net-summary-title{font-size:15px;font-weight:700;margin-bottom:20px;color:var(--text)}
-.track-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.track-label{font-size:13px;font-weight:600;width:110px;flex-shrink:0;color:var(--text)}
-.track-bar{flex:1;height:20px;background:var(--lt);border-radius:6px;overflow:hidden;display:flex}
-.track-fill-ok   {height:100%;background:var(--green);transition:width .5s ease}
-.track-fill-minor{height:100%;background:var(--yellow);transition:width .5s ease}
-.track-pct{font-size:13px;color:var(--muted);width:42px;text-align:right;flex-shrink:0}
+/* ── overall tab — vertical KPI cards ── */
+.net-summary{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:20px 20px 16px;margin-bottom:24px}
+.net-summary-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.kpi-list{display:flex;flex-direction:column;gap:14px}
+.kpi-card{background:var(--bg);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi-name{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.kpi-pct{font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:12px}
+.kpi-pct-unit{font-size:16px;color:var(--muted);font-weight:400}
+.kpi-bar-track{height:36px;background:var(--border);border-radius:8px;overflow:hidden;display:flex}
+.seg-ok{background:var(--green);height:100%;display:flex;align-items:center;padding:0 10px;min-width:0}
+.seg-mn{background:var(--yellow);height:100%;display:flex;align-items:center;padding:0 8px;min-width:0}
+.seg-label-ok{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
+.seg-label-mn{font-size:12px;font-weight:600;color:#78350f;white-space:nowrap;overflow:hidden}
+.kpi-na{background:var(--bg);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi-na-name{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.kpi-na-note{font-size:13px;color:var(--muted)}
 .bar-legend{display:flex;gap:16px;margin-top:16px;padding-top:14px;border-top:0.5px solid var(--border)}
+.bar-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
 .bar-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-.bar-legend-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -88,7 +95,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
   <div class="campus-tabs" id="campus-tabs">
-    <div class="campus-tab sep active" onclick="showTab('overall',this)">Overall Status</div>
+    <div class="campus-tab sep active" onclick="showTab('overall',this)">All</div>
     <div class="campus-tab" onclick="showTab('BEC',this)">BEC</div>
     <div class="campus-tab" onclick="showTab('BMC',this)">BMC</div>
     <div class="campus-tab" onclick="showTab('AEC',this)">AEC</div>
@@ -207,10 +214,10 @@ function buildSectionedTables(rooms) {
       <table class="space-table">
         <thead><tr>
           <th>Space</th>
-          <th class="sc" style="color:var(--col-mds)">Schools</th>
-          <th class="sc" style="color:var(--col-sdo)">Ops</th>
-          <th class="sc" style="color:var(--col-dof)">Facilities</th>
-          <th class="sc" style="color:var(--col-dot)">Tech</th>
+          <th class="sc">Schools</th>
+          <th class="sc">Ops</th>
+          <th class="sc">Facilities</th>
+          <th class="sc">Tech</th>
         </tr></thead>
         <tbody>`;
     groups[sec].forEach(r => {
@@ -228,7 +235,6 @@ function buildSectionedTables(rooms) {
 }
 
 function buildOverall(allData) {
-  // Network-wide stacked bar: ok pct + minor pct per track, excluding N/A
   function networkPcts(track) {
     let ok = 0, minor = 0, total = 0;
     CAMPUSES.forEach(c => {
@@ -243,9 +249,7 @@ function buildOverall(allData) {
         if (cls === 'dot-minor') minor++;
       });
     });
-    return total
-      ? { ok: Math.round(ok/total*100), minor: Math.round(minor/total*100), total }
-      : null;
+    return total ? { ok: Math.round(ok/total*100), minor: Math.round(minor/total*100), total } : null;
   }
 
   const trackMeta = [
@@ -255,18 +259,27 @@ function buildOverall(allData) {
     {key:'tech', label:'Tech'},
   ];
 
-  const barsHtml = trackMeta.map(t => {
+  const cardsHtml = trackMeta.map(t => {
     const p = networkPcts(t.key);
-    const okW    = p ? p.ok    + '%' : '0%';
-    const minorW = p ? p.minor + '%' : '0%';
-    const totalPct = p ? (p.ok + p.minor) + '%' : '—';
-    return `<div class="track-row">
-      <span class="track-label">${t.label}</span>
-      <div class="track-bar">
-        <div class="track-fill-ok"    style="width:${okW}"></div>
-        <div class="track-fill-minor" style="width:${minorW}"></div>
+    if (!p) {
+      return `<div class="kpi-na">
+        <div class="kpi-na-name">${t.label}</div>
+        <div class="kpi-na-note">Not yet assessed</div>
+      </div>`;
+    }
+    const combined = p.ok + p.minor;
+    const okW    = p.ok    + '%';
+    const minorW = p.minor + '%';
+    // Only show text label inside segment if wide enough (≥14%)
+    const okLabel    = p.ok    >= 14 ? `${p.ok}% fully ready`    : p.ok >= 6 ? `${p.ok}%` : '';
+    const minorLabel = p.minor >= 10 ? `${p.minor}% minor items`  : p.minor >= 5 ? `${p.minor}%` : '';
+    return `<div class="kpi-card">
+      <div class="kpi-name">${t.label}</div>
+      <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
+      <div class="kpi-bar-track">
+        <div class="seg-ok" style="width:${okW}"><span class="seg-label-ok">${okLabel}</span></div>
+        <div class="seg-mn" style="width:${minorW}"><span class="seg-label-mn">${minorLabel}</span></div>
       </div>
-      <span class="track-pct">${totalPct}</span>
     </div>`;
   }).join('');
 
@@ -276,11 +289,11 @@ function buildOverall(allData) {
   return `
     <div class="net-summary">
       <div class="net-summary-title">Total Signoff Progress</div>
-      ${barsHtml}
+      <div class="kpi-list">${cardsHtml}</div>
       <div class="bar-legend">
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
-        <span class="bar-legend-item" style="margin-left:auto;font-size:11px">${genStr ? 'Updated ' + genStr : ''}</span>
+        ${genStr ? `<span style="margin-left:auto;font-size:11px;color:var(--muted)">Updated ${genStr}</span>` : ''}
       </div>
     </div>`;
 }
