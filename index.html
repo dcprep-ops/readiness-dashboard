@@ -2,501 +2,230 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BOY Readiness</title>
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BOY Readiness">
-<meta name="application-name" content="BOY Readiness">
-<link rel="apple-touch-icon" href="icon.svg">
-<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkJPWSBSZWFkaW5lc3MgRGFzaGJvYXJkIiwKICAic2hvcnRfbmFtZSI6ICJCT1kgUmVhZGluZXNzIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwZDk0ODgiLAogICJ0aGVtZV9jb2xvciI6ICIjMGQ5NDg4IiwKICAiaWNvbnMiOiBbeyJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCMmFXVjNRbTk0UFNJd0lEQWdNVEl3SURFeU1DSWdlRzFzYm5NOUltaDBkSEE2THk5M2QzY3Vkek11YjNKbkx6SXdNREF2YzNabklqNEtJQ0E4Y21WamRDQjNhV1IwYUQwaU1USXdJaUJvWldsbmFIUTlJakV5TUNJZ1ptbHNiRDBpSXpCa09UUTRPQ0l2UGdvZ0lEeHlaV04wSUhnOUlqRTBJaUI1UFNJeU1pSWdkMmxrZEdnOUlqa3lJaUJvWldsbmFIUTlJalk0SWlCeWVEMGlOU0lnWm1sc2JEMGljbWRpWVNneU5UVXNNalUxTERJMU5Td3dMakUxS1NJZ2MzUnliMnRsUFNJalptWm1JaUJ6ZEhKdmEyVXRkMmxrZEdnOUlqSXVOU0l2UGdvZ0lEeHlaV04wSUhnOUlqRTBJaUI1UFNJNE1DSWdkMmxrZEdnOUlqa3lJaUJvWldsbmFIUTlJakV3SWlCbWFXeHNQU0p5WjJKaEtESTFOU3d5TlRVc01qVTFMREF1TVNraUx6NEtJQ0E4YkdsdVpTQjRNVDBpTWpZaUlIa3hQU0kwTUNJZ2VESTlJall3SWlCNU1qMGlOREFpSUhOMGNtOXJaVDBpSTJabVppSWdjM1J5YjJ0bExYZHBaSFJvUFNJeUxqVWlJSE4wY205clpTMXNhVzVsWTJGd1BTSnliM1Z1WkNJZ2IzQmhZMmwwZVQwaUxqZzFJaTgrQ2lBZ1BHeHBibVVnZURFOUlqSTJJaUI1TVQwaU5URWlJSGd5UFNJM05DSWdlVEk5SWpVeElpQnpkSEp2YTJVOUlpTm1abVlpSUhOMGNtOXJaUzEzYVdSMGFEMGlNaTQxSWlCemRISnZhMlV0YkdsdVpXTmhjRDBpY205MWJtUWlJRzl3WVdOcGRIazlJaTQySWk4K0NpQWdQR3hwYm1VZ2VERTlJakkySWlCNU1UMGlOaklpSUhneVBTSTFNQ0lnZVRJOUlqWXlJaUJ6ZEhKdmEyVTlJaU5tWm1ZaUlITjBjbTlyWlMxM2FXUjBhRDBpTWk0MUlpQnpkSEp2YTJVdGJHbHVaV05oY0QwaWNtOTFibVFpSUc5d1lXTnBkSGs5SWk0MklpOCtDaUFnUEdOcGNtTnNaU0JqZUQwaU9ESWlJR041UFNJME15SWdjajBpTVRVaUlHWnBiR3c5SWlObVptWWlJRzl3WVdOcGRIazlJaTR5TlNJdlBnb2dJRHh3YjJ4NWJHbHVaU0J3YjJsdWRITTlJamMyTERReklEZ3hMRFE0SURrd0xETTJJaUJtYVd4c1BTSnViMjVsSWlCemRISnZhMlU5SWlObVptWWlJSE4wY205clpTMTNhV1IwYUQwaU15SWdjM1J5YjJ0bExXeHBibVZqWVhBOUluSnZkVzVrSWlCemRISnZhMlV0YkdsdVpXcHZhVzQ5SW5KdmRXNWtJaTgrQ2p3dmMzWm5QZz09IiwgInNpemVzIjogIjEyMHgxMjAiLCAidHlwZSI6ICJpbWFnZS9zdmcreG1sIn1dCn0=">
-<meta property="og:title" content="BOY Classroom Readiness Dashboard">
-<meta property="og:description" content="DC Prep — Classroom readiness by school, SY 2026-27">
-<meta property="og:image" content="share.png">
-<meta name="theme-color" content="#0d9488">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BOY Readiness Dashboard</title>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root{
+  --blue:#005E9E;--blue-web:#0083C4;--gold:#E5A810;
+  --green:#16a34a;--amber:#d97706;--red:#dc2626;
+  --red-lt:#fef2f2;--amber-lt:#fffbeb;--green-lt:#f0fdf4;
+  --border:rgba(0,94,158,.1);--bg:#F4F7FA;--card:#fff;
+  --lt:#EBF3FB;--text:#1A2B3C;--muted:#6B8299;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
-:root {
-  --navy:    #1a3a5c;
-  --teal:    #0d9488;
-  --amber:   #f59e0b;
-  --red:     #dc2626;
-  --slate:   #475569;
-  --muted:   #94a3b8;
-  --border:  #e2e8f0;
-  --bg:      #f1f5f9;
-  --card:    #ffffff;
-  --lt:      #f8fafc;
-}
+/* ── header ── */
+.hdr{background:var(--blue);position:sticky;top:0;z-index:100}
+.hdr-gold{height:5px;background:var(--gold)}
+.hdr-inner{padding:14px 20px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.hdr-brand{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:2px}
+.hdr-title{font-size:18px;font-weight:700;color:#fff}
+.hdr-meta{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  background: #fff;
-  color: var(--navy);
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-}
+/* campus tabs */
+.campus-tabs{display:flex;gap:0;overflow-x:auto;background:rgba(0,0,0,.15);padding:0 20px}
+.campus-tab{font-size:12px;font-weight:600;color:rgba(255,255,255,.55);padding:9px 16px;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent;flex-shrink:0}
+.campus-tab.active{color:#fff;border-bottom-color:var(--gold)}
 
-/* ── HEADER ── */
-.header {
-  background: var(--navy);
-  padding: 24px 32px 20px;
-}
-.header-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #fff;
-  letter-spacing: -.3px;
-}
-.header-sub {
-  font-size: 12px;
-  color: rgba(255,255,255,.4);
-  margin-top: 4px;
-}
+/* ── legend ── */
+.legend{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--card);border-bottom:0.5px solid var(--border);flex-wrap:wrap}
+.legend-title{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin-right:4px;white-space:nowrap}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+.dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700}
+.dot-ok{background:var(--green);color:#fff}
+.dot-minor{background:var(--amber);color:#fff}
+.dot-bad{background:var(--red);color:#fff}
+.dot-blank{background:#fff;border:1.5px solid #cbd5e1}
+.dot-na{background:var(--lt);color:var(--muted);font-size:8px;font-weight:600}
 
-/* ── SUMMARY STRIP ── */
-.summary-strip {
-  background: #f1f5f9;
-  padding: 12px 10px;
-  display: flex;
-  gap: 5px;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-.school-tab {
-  flex: 1;
-  min-width: 0;
-  max-width: 100%;
-  padding: 10px 2px;
-  border-radius: 9px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  transition: all .15s;
-  -webkit-tap-highlight-color: transparent;
-  overflow: hidden;
-}
-.school-tab:hover { border-color: var(--teal); }
-.school-tab.active { background: var(--navy); border-color: var(--navy); }
-.school-tab-name {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--slate);
-  white-space: nowrap;
-}
-.school-tab.active .school-tab-name { color: rgba(255,255,255,.7); }
-.school-tab-pct {
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.1;
-  white-space: nowrap;
-}
-.pct-full  { color: var(--teal); }
-.pct-mid   { color: var(--amber); }
-.pct-low   { color: var(--red); }
-.school-tab.active .school-tab-pct { color: #fff; }
-.school-tab-sub {
-  font-size: 9px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.school-tab.active .school-tab-sub { color: rgba(255,255,255,.5); }
-@media (max-width: 480px) {
-  .school-tab-pct { display: none; }
-  .school-tab-sub { display: none; }
-  .school-tab {
-    padding: 10px 0;
-    border-radius: 8px;
-    border: none;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
-  }
-  .school-tab.active { box-shadow: none; }
-  .school-tab-name { font-size: 11px; }
-  .summary-strip {
-    gap: 3px;
-    padding-top: 10px;
-    padding-bottom: 10px;
-    padding-left: 4px;
-    padding-right: 4px;
-  }
-}
+/* ── column label pills ── */
+.col-pill-mds{color:var(--blue)}
+.col-pill-sdo{color:#7c3aed}
+.col-pill-dof{color:#b45309}
 
-/* ── MAIN ── */
-.main {
-  max-width: 840px;
-  margin: 0 auto;
-  padding: 28px 24px 60px;
-  background: #fff;
-}
+/* ── progress summary ── */
+.progress-bar-wrap{padding:16px 20px 0;max-width:1100px;margin:0 auto}
+.progress-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.progress-item{flex:1;min-width:150px}
+.progress-label{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+.progress-track{height:8px;background:var(--lt);border-radius:4px;overflow:hidden}
+.progress-fill-mds{background:var(--blue)}
+.progress-fill-sdo{background:#7c3aed}
+.progress-fill-dof{background:#b45309}
 
-/* ── SECTION LABEL ── */
-.section-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 14px;
-}
+/* ── main layout ── */
+.main{max-width:1100px;margin:0 auto;padding:16px 20px 40px}
 
-/* ── SCHOOL PANEL ── */
-.school-panel { display: none; }
-.school-panel.active { display: block; }
+/* ── section ── */
+.section-block{margin-bottom:24px}
+.section-hdr{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:0 0 8px}
 
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  gap: 12px;
-}
-.panel-school { font-size: 18px; font-weight: 600; color: var(--navy); }
-.panel-stats { display: flex; gap: 20px; flex-shrink: 0; }
-.panel-stat { text-align: right; }
-.panel-stat-val { font-size: 22px; font-weight: 700; line-height: 1; }
-.panel-stat-lbl { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-top: 2px; }
-
-/* ── CLASSROOM LIST ── */
-.cr-section { margin-bottom: 24px; }
-.cr-section-hdr {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 8px 0 6px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 2px;
-}
-.cr-section-hdr.needs  { color: var(--red); }
-.cr-section-hdr.minor  { color: var(--amber); }
-.cr-section-hdr.full   { color: var(--teal); }
-.cr-section-hdr.unseen { color: var(--muted); }
-
-.cr-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 0.5px solid var(--border);
-}
-.cr-row:last-child { border-bottom: none; }
-.cr-left { display: flex; align-items: center; gap: 10px; }
-.cr-dot {
-  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
-}
-.dot-full   { background: var(--teal); }
-.dot-minor  { background: var(--amber); }
-.dot-needs  { background: var(--red); }
-.dot-unseen { background: var(--border); }
-.cr-name { font-size: 14px; font-weight: 500; color: var(--navy); }
-.cr-grade { font-size: 12px; color: var(--muted); margin-left: 2px; }
-.cr-right { text-align: right; }
-.cr-date  { font-size: 11px; color: var(--muted); margin-top: 3px; }
-.cr-assessment {
-  font-size: 11px; font-weight: 600; padding: 2px 8px;
-  border-radius: 20px; white-space: nowrap;
-}
-.asmnt-full  { background: #f0fdf4; color: #166534; }
-.asmnt-minor { background: #fef9c3; color: #854d0e; }
-.asmnt-needs { background: #fef2f2; color: #991b1b; }
-.asmnt-none  { background: var(--lt); color: var(--muted); border: 0.5px solid var(--border); }
-
-/* ── LOADING / ERROR ── */
-.state-msg {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.8;
-}
-.error-box {
-  background: #fef2f2;
-  border: 0.5px solid #fecaca;
-  border-radius: 8px;
-  padding: 16px 20px;
-  color: #991b1b;
-  font-size: 13px;
-  margin: 24px 0;
-  line-height: 1.6;
-}
-
-/* ── UPDATED ── */
-.updated {
-  font-size: 11px;
-  color: var(--muted);
-  text-align: center;
-  padding: 16px 0 0;
-}
-
-@media (max-width: 600px) {
-  .header { padding: 20px 16px 16px; }
-  .main { padding: 20px 16px 48px; }
-}
+/* ── space table ── */
+.space-table{width:100%;border-collapse:collapse;background:var(--card);border:0.5px solid var(--border);border-radius:10px;overflow:hidden}
+.space-table th{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:8px 12px;text-align:left;background:var(--lt);border-bottom:0.5px solid var(--border)}
+.space-table th.status-col{text-align:center;width:72px}
+.space-table td{padding:8px 12px;border-bottom:0.5px solid var(--border);font-size:13px;color:var(--text);vertical-align:middle}
+.space-table tr:last-child td{border-bottom:none}
+.space-table tr:hover td{background:#f8fbff}
+.space-table td.status-col{text-align:center}
+.grade-pill{font-size:9px;font-weight:600;color:var(--muted);background:var(--lt);padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:middle}
+.space-name{font-weight:500}
+.note-tip{font-size:11px;color:var(--red);margin-top:2px;display:block}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-title">Classroom Readiness</div>
-  <div class="header-sub" id="header-sub">Loading…</div>
+<!-- header -->
+<div class="hdr">
+  <div class="hdr-gold"></div>
+  <div class="hdr-inner">
+    <div>
+      <div class="hdr-brand">DC Prep</div>
+      <div class="hdr-title">BOY Readiness Dashboard</div>
+      <div class="hdr-meta">SY 2026–27 · Updated July 25, 2026</div>
+    </div>
+  </div>
+  <div class="campus-tabs">
+    <div class="campus-tab active">BEC</div>
+    <div class="campus-tab">BMC</div>
+    <div class="campus-tab">AEC</div>
+    <div class="campus-tab">AMC</div>
+    <div class="campus-tab">EEC</div>
+    <div class="campus-tab">EMC</div>
+  </div>
 </div>
 
-<div class="summary-strip" id="summary-strip">
-  <div class="state-msg" style="padding:20px">Loading school data…</div>
+<!-- legend -->
+<div class="legend">
+  <span class="legend-title">Status</span>
+  <span class="legend-item"><span class="dot dot-ok">✓</span> Fully ready</span>
+  <span class="legend-item"><span class="dot dot-minor">~</span> Minor items</span>
+  <span class="legend-item"><span class="dot dot-bad">!</span> Not ready</span>
+  <span class="legend-item"><span class="dot dot-blank"></span> Not assessed</span>
+  <span class="legend-item"><span class="dot dot-na">—</span> N/A</span>
+</div>
+
+<!-- progress summary -->
+<div class="progress-bar-wrap">
+  <div class="progress-row">
+    <div class="progress-item">
+      <div class="progress-label"><span class="col-pill-mds">● MDS (Schools)</span><span>18 / 28</span></div>
+      <div class="progress-track"><div class="progress-fill-mds" style="width:64%;height:100%;border-radius:4px"></div></div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-label"><span class="col-pill-sdo">● SDO (Operations)</span><span>20 / 28</span></div>
+      <div class="progress-track"><div class="progress-fill-sdo" style="width:71%;height:100%;border-radius:4px"></div></div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-label"><span class="col-pill-dof">● DOF (Facilities)</span><span>12 / 28</span></div>
+      <div class="progress-track"><div class="progress-fill-dof" style="width:43%;height:100%;border-radius:4px"></div></div>
+    </div>
+  </div>
 </div>
 
 <div class="main">
-  <div id="loading" class="state-msg">Fetching latest submissions…</div>
-  <div id="error" style="display:none"></div>
-  <div id="panels"></div>
-  <div class="updated" id="updated"></div>
+
+<!-- ── CLASSROOMS ── -->
+<div class="section-block">
+  <div class="section-hdr">Classrooms</div>
+  <table class="space-table">
+    <thead>
+      <tr>
+        <th>Space</th>
+        <th class="status-col col-pill-mds">MDS</th>
+        <th class="status-col col-pill-sdo">SDO</th>
+        <th class="status-col col-pill-dof">DOF</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="space-name">American</span><span class="grade-pill">K</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
+      <tr><td><span class="space-name">Gallaudet</span><span class="grade-pill">K</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-minor">~</span></td></tr>
+      <tr><td><span class="space-name">George Mason</span><span class="grade-pill">1</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Johns Hopkins</span><span class="grade-pill">1</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
+      <tr><td><span class="space-name">Syracuse</span><span class="grade-pill">2</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Williams</span><span class="grade-pill">2</span></td><td class="status-col"><span class="dot dot-minor">~</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Northwestern</span><span class="grade-pill">3</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-bad">!</span></td></tr>
+      <tr><td><span class="space-name">UChicago</span><span class="grade-pill">3</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Dartmouth</span><span class="grade-pill">3</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">UPenn</span><span class="grade-pill">3</span></td><td class="status-col"><span class="dot dot-bad">!</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+    </tbody>
+  </table>
 </div>
 
-<script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPbhFWpzKX6S6seb1c0QKplVM22LjZG6bkGMBnTNopry6dDr5YGtffKKR3EsFQ77n5BQ/exec';
+<!-- ── OUTDOOR ── -->
+<div class="section-block">
+  <div class="section-hdr">Outdoor</div>
+  <table class="space-table">
+    <thead>
+      <tr>
+        <th>Space</th>
+        <th class="status-col col-pill-mds">MDS</th>
+        <th class="status-col col-pill-sdo">SDO</th>
+        <th class="status-col col-pill-dof">DOF</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="space-name">Main entrance</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
+      <tr><td><span class="space-name">Playground / blacktop</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
+      <tr><td><span class="space-name">Drop-off / pick-up zone</span></td><td class="status-col"><span class="dot dot-na">—</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
+    </tbody>
+  </table>
+</div>
 
-const SCHOOLS = [
-  { code: 'AEC', name: 'Anacostia Elementary', full: 'Anacostia Elementary' },
-  { code: 'AMC', name: 'Anacostia Middle',     full: 'Anacostia Middle' },
-  { code: 'BEC', name: 'Benning Elementary',   full: 'Benning Elementary' },
-  { code: 'BMC', name: 'Benning Middle',       full: 'Benning Middle' },
-  { code: 'EEC', name: 'Edgewood Elementary',  full: 'Edgewood Elementary' },
-  { code: 'EMC', name: 'Edgewood Middle',      full: 'Edgewood Middle' },
-];
+<!-- ── COMMON SPACES ── -->
+<div class="section-block">
+  <div class="section-hdr">Common Spaces</div>
+  <table class="space-table">
+    <thead>
+      <tr>
+        <th>Space</th>
+        <th class="status-col col-pill-mds">MDS</th>
+        <th class="status-col col-pill-sdo">SDO</th>
+        <th class="status-col col-pill-dof">DOF</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="space-name">Lobby / front desk</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
+      <tr><td><span class="space-name">Cafeteria</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-minor">~</span></td></tr>
+      <tr><td><span class="space-name">Gymnasium</span></td><td class="status-col"><span class="dot dot-bad">!</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Library / media center</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Music room</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
+      <tr><td><span class="space-name">Art room</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-na">—</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Nurse suite</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
+      <tr><td><span class="space-name">Hallways</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
+      <tr><td><span class="space-name">Stairwells</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
+      <tr><td><span class="space-name">Student restroom A</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
+      <tr><td><span class="space-name">Student restroom B</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Staff restroom</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
+    </tbody>
+  </table>
+</div>
 
-const CLASSROOMS = {
-  AEC: [
-    {name:'American',    grade:'EC'}, {name:'Gallaudet',  grade:'EC'}, {name:'George Mason', grade:'EC'},
-    {name:'Johns Hopkins',grade:'EC'},{name:'Syracuse',   grade:'EC'}, {name:'Williams',     grade:'EC'},
-    {name:'Northwestern',grade:'K'},  {name:'UChicago',   grade:'K'},  {name:'UMichigan',    grade:'K'},
-    {name:'Gonzaga',     grade:'1'},  {name:'UOregon',    grade:'1'},  {name:'Pepperdine',   grade:'1'},
-    {name:'Morehouse',   grade:'2'},  {name:'Spelman',    grade:'2'},  {name:'Xavier',       grade:'2'},
-    {name:'Cornell',     grade:'3'},  {name:'Dartmouth',  grade:'3'},  {name:'UPenn',        grade:'3'},
-  ],
-  AMC: [
-    {name:'GWU',       grade:'4'}, {name:'Georgetown', grade:'4'}, {name:'Howard',    grade:'4'},
-    {name:'UMD',       grade:'5'}, {name:'UNC',        grade:'5'}, {name:'UVA',       grade:'5'},
-    {name:'FAMU',      grade:'6'}, {name:'Hampton',    grade:'6'}, {name:'Tuskegee',  grade:'6'},
-    {name:'Princeton', grade:'7'}, {name:'Stanford',   grade:'7'},
-    {name:'Harvard',   grade:'8'}, {name:'Yale',       grade:'8'},
-  ],
-  BEC: [
-    {name:'American',    grade:'EC'}, {name:'Gallaudet',  grade:'EC'}, {name:'George Mason', grade:'EC'},
-    {name:'Johns Hopkins',grade:'EC'},{name:'Syracuse',   grade:'EC'}, {name:'Williams',     grade:'EC'},
-    {name:'Northwestern',grade:'K'},  {name:'UChicago',   grade:'K'},  {name:'UMichigan',    grade:'K'},
-    {name:'Gonzaga',     grade:'1'},  {name:'UOregon',    grade:'1'},  {name:'Pepperdine',   grade:'1'},
-    {name:'Morehouse',   grade:'2'},  {name:'Spelman',    grade:'2'},  {name:'Xavier',       grade:'2'},
-    {name:'Cornell',     grade:'3'},  {name:'Dartmouth',  grade:'3'},  {name:'UPenn',        grade:'3'},
-  ],
-  BMC: [
-    {name:'GWU',       grade:'4'}, {name:'Georgetown', grade:'4'}, {name:'Howard',    grade:'4'},
-    {name:'UMD',       grade:'5'}, {name:'UNC',        grade:'5'}, {name:'UVA',       grade:'5'},
-    {name:'FAMU',      grade:'6'}, {name:'Hampton',    grade:'6'}, {name:'Tuskegee',  grade:'6'},
-    {name:'Princeton', grade:'7'}, {name:'Stanford',   grade:'7'},
-    {name:'Harvard',   grade:'8'}, {name:'Yale',       grade:'8'},
-  ],
-  EEC: [
-    {name:'American',    grade:'EC'}, {name:'Gallaudet',  grade:'EC'}, {name:'George Mason', grade:'EC'},
-    {name:'Johns Hopkins',grade:'EC'},{name:'Syracuse',   grade:'EC'},
-    {name:'Northwestern',grade:'K'},  {name:'UChicago',   grade:'K'},  {name:'UMichigan',    grade:'K'},
-    {name:'Gonzaga',     grade:'1'},  {name:'UOregon',    grade:'1'},  {name:'Pepperdine',   grade:'1'},
-    {name:'Morehouse',   grade:'2'},  {name:'Spelman',    grade:'2'},  {name:'Xavier',       grade:'2'},
-    {name:'Cornell',     grade:'3'},  {name:'Dartmouth',  grade:'3'},  {name:'UPenn',        grade:'3'},
-  ],
-  EMC: [
-    {name:'GWU',       grade:'4'}, {name:'Georgetown', grade:'4'}, {name:'Howard',    grade:'4'},
-    {name:'UMD',       grade:'5'}, {name:'UNC',        grade:'5'}, {name:'UVA',       grade:'5'},
-    {name:'FAMU',      grade:'6'}, {name:'Hampton',    grade:'6'}, {name:'Tuskegee',  grade:'6'},
-    {name:'Princeton', grade:'7'}, {name:'Stanford',   grade:'7'},
-    {name:'Harvard',   grade:'8'}, {name:'Yale',       grade:'8'},
-  ],
-};
+<!-- ── OFFICES & CONFERENCE ROOMS ── -->
+<div class="section-block">
+  <div class="section-hdr">Offices &amp; Conference Rooms</div>
+  <table class="space-table">
+    <thead>
+      <tr>
+        <th>Space</th>
+        <th class="status-col col-pill-mds">MDS</th>
+        <th class="status-col col-pill-sdo">SDO</th>
+        <th class="status-col col-pill-dof">DOF</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="space-name">Principal office</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
+      <tr><td><span class="space-name">OSL office</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">K/1 Asst. Principal</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
+      <tr><td><span class="space-name">2/3 Asst. Principal</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-minor">~</span></td></tr>
+      <tr><td><span class="space-name">SpEd coordinator</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Academic specialist</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+      <tr><td><span class="space-name">Behavioral health office</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
+    </tbody>
+  </table>
+</div>
 
-function gradeLabel(g) {
-  return g === 'EC' ? 'EC' : g === 'K' ? 'Kindergarten' : g + (g==='1'?'st':g==='2'?'nd':g==='3'?'rd':'th') + ' Grade';
-}
-
-function asmntSort(a) {
-  if (a === 'Not ready — return visit needed') return 0;
-  if (a === null) return 1;
-  if (a === 'Ready — minor items remain') return 2;
-  return 3; // Fully ready
-}
-
-function pctColor(pct) {
-  if (pct >= 80) return 'pct-full';
-  if (pct >= 50) return 'pct-mid';
-  return 'pct-low';
-}
-
-function formatDate(ts) {
-  if (!ts) return null;
-  const d = new Date(ts);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-// ── FETCH DATA ────────────────────────────────────────────────────────────────
-async function loadData() {
-  try {
-    const res  = await fetch(SCRIPT_URL + '?view=readiness');
-    const data = await res.json();
-
-    if (data.error) throw new Error(data.error);
-
-    document.getElementById('loading').style.display = 'none';
-    render(data);
-
-  } catch (err) {
-    document.getElementById('loading').style.display = 'none';
-    const eb = document.getElementById('error');
-    eb.style.display = '';
-    eb.innerHTML = `<div class="error-box">
-      <strong>Could not load readiness data.</strong><br>
-      Make sure the Apps Script is deployed and the URL is correct.<br><br>
-      <small>${err.message}</small>
-    </div>`;
-  }
-}
-
-// ── RENDER ────────────────────────────────────────────────────────────────────
-function render(data) {
-  // data.submissions: array of { campus_code, classroom, assessment, timestamp }
-  const subs = data.submissions || [];
-
-  // Build a map: campusCode+classroom → most recent submission
-  const latest = {};
-  subs.forEach(s => {
-    const key = s.campus_code + '|' + s.classroom;
-    if (!latest[key] || new Date(s.timestamp) > new Date(latest[key].timestamp)) {
-      latest[key] = s;
-    }
-  });
-
-  // Build summary strip + panels
-  const strip  = document.getElementById('summary-strip');
-  const panels = document.getElementById('panels');
-  strip.innerHTML  = '';
-  panels.innerHTML = '';
-
-  SCHOOLS.forEach((school, si) => {
-    const rooms    = CLASSROOMS[school.code] || [];
-    const total    = rooms.length;
-    const complete = rooms.filter(r => {
-      const sub = latest[school.code + '|' + r.name];
-      return sub && (sub.assessment === 'Fully ready' || sub.assessment === 'Ready — minor items remain');
-    }).length;
-    const notReady = rooms.filter(r => {
-      const sub = latest[school.code + '|' + r.name];
-      return sub && sub.assessment === 'Not ready — return visit needed';
-    }).length;
-    const unseen   = rooms.filter(r => !latest[school.code + '|' + r.name]).length;
-    const pct      = Math.round(complete / total * 100);
-
-    // Tab
-    const tab = document.createElement('div');
-    tab.className = 'school-tab' + (si === 0 ? ' active' : '');
-    tab.onclick = () => switchTab(school.code);
-    tab.id = 'tab-' + school.code;
-    tab.innerHTML = `
-      <div class="school-tab-name">${school.code}</div>
-      <div class="school-tab-pct ${pctColor(pct)}">${complete} <span style="font-size:13px;font-weight:500">of ${total}</span></div>
-      <div class="school-tab-sub">complete</div>`;
-    strip.appendChild(tab);
-
-    // Panel
-    const panel = document.createElement('div');
-    panel.className = 'school-panel' + (si === 0 ? ' active' : '');
-    panel.id = 'panel-' + school.code;
-
-    // Sort rooms by assessment priority
-    const sorted = [...rooms].sort((a, b) => {
-      const sa = latest[school.code + '|' + a.name];
-      const sb = latest[school.code + '|' + b.name];
-      const aa = sa ? sa.assessment : null;
-      const ab = sb ? sb.assessment : null;
-      const diff = asmntSort(aa) - asmntSort(ab);
-      if (diff !== 0) return diff;
-      return a.name.localeCompare(b.name);
-    });
-
-    // Group by assessment
-    const groups = [
-      { key: 'needs',  label: 'Return visit needed',    cls: 'needs',  filter: r => { const s=latest[school.code+'|'+r.name]; return s && s.assessment==='Not ready — return visit needed'; }},
-      { key: 'unseen', label: 'Not yet assessed',       cls: 'unseen', filter: r => !latest[school.code+'|'+r.name] },
-      { key: 'minor',  label: 'Ready — minor items',    cls: 'minor',  filter: r => { const s=latest[school.code+'|'+r.name]; return s && s.assessment==='Ready — minor items remain'; }},
-      { key: 'full',   label: 'Fully ready',            cls: 'full',   filter: r => { const s=latest[school.code+'|'+r.name]; return s && s.assessment==='Fully ready'; }},
-    ];
-
-    const needAttn = notReady + unseen;
-    let panelHTML = `<div class="panel-header">
-      <div class="panel-school">${school.full}</div>
-      <div class="panel-stats">
-        <div class="panel-stat">
-          <div class="panel-stat-val" style="color:var(--red)">${needAttn}</div>
-          <div class="panel-stat-lbl">Need attention</div>
-        </div>
-        <div class="panel-stat">
-          <div class="panel-stat-val" style="color:var(--teal)">${complete}</div>
-          <div class="panel-stat-lbl">Complete</div>
-        </div>
-      </div>
-    </div>`;
-
-    groups.forEach(g => {
-      const groupRooms = sorted.filter(g.filter);
-      if (!groupRooms.length) return;
-      panelHTML += `<div class="cr-section">
-        <div class="cr-section-hdr ${g.cls}">${g.label} &nbsp;(${groupRooms.length})</div>`;
-      groupRooms.forEach(r => {
-        const sub = latest[school.code + '|' + r.name];
-        const dateStr = sub ? formatDate(sub.timestamp) : null;
-        const asmntCls = g.key === 'full' ? 'asmnt-full' : g.key === 'minor' ? 'asmnt-minor' : g.key === 'needs' ? 'asmnt-needs' : 'asmnt-none';
-        const asmntTxt = g.key === 'unseen' ? 'Not assessed' : (sub ? sub.assessment.replace(' — return visit needed','').replace(' — minor items remain','') : '');
-        const dotCls   = g.key === 'full' ? 'dot-full' : g.key === 'minor' ? 'dot-minor' : g.key === 'needs' ? 'dot-needs' : 'dot-unseen';
-        panelHTML += `<div class="cr-row">
-          <div class="cr-left">
-            <div class="cr-dot ${dotCls}"></div>
-            <div>
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <span class="cr-name">${r.name}</span><span class="cr-grade">(${gradeLabel(r.grade)})</span>
-                <span class="cr-assessment ${asmntCls}">${asmntTxt}</span>
-              </div>
-              ${dateStr ? `<div class="cr-date">Last assessment: ${dateStr}</div>` : ''}
-            </div>
-          </div>
-        </div>`;
-      });
-      panelHTML += '</div>';
-    });
-
-    panel.innerHTML = panelHTML;
-    panels.appendChild(panel);
-  });
-
-  const now = new Date();
-  const monthName = now.toLocaleString('en-US',{month:'long'});
-  const dayNum = now.getDate();
-  document.getElementById('header-sub').textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ' ' + dayNum;
-  document.getElementById('updated').textContent =
-    'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-}
-
-function switchTab(code) {
-  document.querySelectorAll('.school-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.school-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('tab-'+code).classList.add('active');
-  document.getElementById('panel-'+code).classList.add('active');
-}
-
-loadData();
-// Auto-refresh every 2 minutes
-setInterval(loadData, 120000);
-</script>
+</div><!-- /main -->
 </body>
 </html>
