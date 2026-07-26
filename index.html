@@ -7,10 +7,10 @@
 <style>
 :root{
   --blue:#005E9E;--blue-web:#0083C4;--gold:#E5A810;
-  --green:#16a34a;--amber:#d97706;--red:#dc2626;
-  --red-lt:#fef2f2;--amber-lt:#fffbeb;--green-lt:#f0fdf4;
+  --green:#16a34a;--yellow:#ffd65a;--red:#dc2626;
   --border:rgba(0,94,158,.1);--bg:#F4F7FA;--card:#fff;
   --lt:#EBF3FB;--text:#1A2B3C;--muted:#6B8299;
+  --col-mds:var(--blue);--col-sdo:#7c3aed;--col-dof:#b45309;--col-dot:#0891b2;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
@@ -18,85 +18,90 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ── header ── */
 .hdr{background:var(--blue);position:sticky;top:0;z-index:100}
 .hdr-gold{height:5px;background:var(--gold)}
-.hdr-inner{padding:14px 20px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.hdr-inner{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
 .hdr-brand{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:2px}
 .hdr-title{font-size:18px;font-weight:700;color:#fff}
 .hdr-meta{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
 
 /* campus tabs */
 .campus-tabs{display:flex;gap:0;overflow-x:auto;background:rgba(0,0,0,.15);padding:0 20px}
-.campus-tab{font-size:12px;font-weight:600;color:rgba(255,255,255,.55);padding:9px 16px;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent;flex-shrink:0}
+.campus-tab{font-size:12px;font-weight:600;color:rgba(255,255,255,.55);padding:9px 16px;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent;flex-shrink:0;transition:color .15s}
 .campus-tab.active{color:#fff;border-bottom-color:var(--gold)}
+.campus-tab.sep{border-right:1px solid rgba(255,255,255,.15);margin-right:8px}
 
 /* ── legend ── */
-.legend{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--card);border-bottom:0.5px solid var(--border);flex-wrap:wrap}
+.legend{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--card);border-bottom:0.5px solid var(--border);flex-wrap:wrap}
 .legend-title{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin-right:4px;white-space:nowrap}
 .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
-.dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700}
-.dot-ok{background:var(--green);color:#fff}
-.dot-minor{background:var(--amber);color:#fff}
-.dot-bad{background:var(--red);color:#fff}
-.dot-blank{background:#fff;border:1.5px solid #cbd5e1}
-.dot-na{background:var(--lt);color:var(--muted);font-size:8px;font-weight:600}
 
-/* ── column label pills ── */
-.col-pill-mds{color:var(--blue)}
-.col-pill-sdo{color:#7c3aed}
-.col-pill-dof{color:#b45309}
+/* ── dots ── */
+.dot{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;line-height:1}
+.dot-ok    {background:var(--green); color:#fff}
+.dot-minor {background:var(--yellow);color:#1A2B3C}
+.dot-bad   {background:var(--red);   color:#fff}
+.dot-blank {background:#fff;border:1.5px solid #cbd5e1}
+.dot-na    {background:var(--lt);color:var(--muted);font-size:8px;font-weight:600}
 
-/* ── progress summary ── */
-.progress-bar-wrap{padding:16px 20px 0;max-width:1100px;margin:0 auto}
-.progress-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
-.progress-item{flex:1;min-width:150px}
-.progress-label{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
-.progress-track{height:8px;background:var(--lt);border-radius:4px;overflow:hidden}
-.progress-fill-mds{background:var(--blue)}
-.progress-fill-sdo{background:#7c3aed}
-.progress-fill-dof{background:#b45309}
-
-/* ── main layout ── */
+/* ── main ── */
 .main{max-width:1100px;margin:0 auto;padding:16px 20px 40px}
-
-/* ── section ── */
+.tab-panel{display:none}.tab-panel.active{display:block}
 .section-block{margin-bottom:24px}
 .section-hdr{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:0 0 8px}
 
 /* ── space table ── */
 .space-table{width:100%;border-collapse:collapse;background:var(--card);border:0.5px solid var(--border);border-radius:10px;overflow:hidden}
-.space-table th{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:8px 12px;text-align:left;background:var(--lt);border-bottom:0.5px solid var(--border)}
-.space-table th.status-col{text-align:center;width:72px}
-.space-table td{padding:8px 12px;border-bottom:0.5px solid var(--border);font-size:13px;color:var(--text);vertical-align:middle}
+.space-table th{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:8px 12px;background:var(--lt);border-bottom:0.5px solid var(--border);text-align:left}
+.space-table th.sc{text-align:center;width:62px;padding:8px 4px}
+.space-table td{padding:7px 12px;border-bottom:0.5px solid var(--border);font-size:13px;color:var(--text);vertical-align:middle}
 .space-table tr:last-child td{border-bottom:none}
 .space-table tr:hover td{background:#f8fbff}
-.space-table td.status-col{text-align:center}
-.grade-pill{font-size:9px;font-weight:600;color:var(--muted);background:var(--lt);padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:middle}
+.space-table td.sc{text-align:center;vertical-align:middle;padding:7px 4px}
 .space-name{font-weight:500}
-.note-tip{font-size:11px;color:var(--red);margin-top:2px;display:block}
+
+/* ── loading / error states ── */
+.loading-row td{color:var(--muted);font-style:italic;text-align:center;padding:20px}
+.empty-msg{color:var(--muted);font-size:13px;padding:40px 0;text-align:center}
+
+/* ── overall tab ── */
+.overall-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px}
+@media(max-width:700px){.overall-grid{grid-template-columns:1fr}}
+.campus-card{background:var(--card);border:0.5px solid var(--border);border-radius:12px;overflow:hidden}
+.campus-card-hdr{background:var(--blue);color:#fff;font-size:12px;font-weight:700;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+.cat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:0.5px solid var(--border);font-size:12px}
+.cat-row:last-child{border-bottom:none}
+.cat-dots{display:flex;gap:5px;align-items:center}
+.cat-dots .dot{width:18px;height:18px;font-size:9px}
+.net-summary{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:24px}
+.net-summary-title{font-size:13px;font-weight:700;margin-bottom:12px}
+.track-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.track-label{font-size:11px;font-weight:700;width:108px;flex-shrink:0}
+.track-bar{flex:1;height:10px;background:var(--lt);border-radius:5px;overflow:hidden}
+.track-fill{height:100%;border-radius:5px;transition:width .4s ease}
+.track-pct{font-size:11px;color:var(--muted);width:36px;text-align:right;flex-shrink:0}
 </style>
 </head>
 <body>
 
-<!-- header -->
 <div class="hdr">
   <div class="hdr-gold"></div>
   <div class="hdr-inner">
     <div>
       <div class="hdr-brand">DC Prep</div>
       <div class="hdr-title">BOY Readiness Dashboard</div>
-      <div class="hdr-meta">SY 2026–27 · Updated July 25, 2026</div>
+      <div class="hdr-meta" id="hdr-meta">SY 2026–27</div>
     </div>
   </div>
-  <div class="campus-tabs">
-    <div class="campus-tab active">BEC</div>
-    <div class="campus-tab">BMC</div>
-    <div class="campus-tab">AEC</div>
-    <div class="campus-tab">AMC</div>
-    <div class="campus-tab">EEC</div>
-    <div class="campus-tab">EMC</div>
+  <div class="campus-tabs" id="campus-tabs">
+    <div class="campus-tab sep active" onclick="showTab('overall',this)">Overall Status</div>
+    <div class="campus-tab" onclick="showTab('BEC',this)">BEC</div>
+    <div class="campus-tab" onclick="showTab('BMC',this)">BMC</div>
+    <div class="campus-tab" onclick="showTab('AEC',this)">AEC</div>
+    <div class="campus-tab" onclick="showTab('AMC',this)">AMC</div>
+    <div class="campus-tab" onclick="showTab('EEC',this)">EEC</div>
+    <div class="campus-tab" onclick="showTab('EMC',this)">EMC</div>
   </div>
 </div>
 
-<!-- legend -->
 <div class="legend">
   <span class="legend-title">Status</span>
   <span class="legend-item"><span class="dot dot-ok">✓</span> Fully ready</span>
@@ -106,126 +111,291 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <span class="legend-item"><span class="dot dot-na">—</span> N/A</span>
 </div>
 
-<!-- progress summary -->
-<div class="progress-bar-wrap">
-  <div class="progress-row">
-    <div class="progress-item">
-      <div class="progress-label"><span class="col-pill-mds">● MDS (Schools)</span><span>18 / 28</span></div>
-      <div class="progress-track"><div class="progress-fill-mds" style="width:64%;height:100%;border-radius:4px"></div></div>
-    </div>
-    <div class="progress-item">
-      <div class="progress-label"><span class="col-pill-sdo">● SDO (Operations)</span><span>20 / 28</span></div>
-      <div class="progress-track"><div class="progress-fill-sdo" style="width:71%;height:100%;border-radius:4px"></div></div>
-    </div>
-    <div class="progress-item">
-      <div class="progress-label"><span class="col-pill-dof">● DOF (Facilities)</span><span>12 / 28</span></div>
-      <div class="progress-track"><div class="progress-fill-dof" style="width:43%;height:100%;border-radius:4px"></div></div>
-    </div>
+<!-- ── Overall Status panel ── -->
+<div id="panel-overall" class="tab-panel active">
+  <div class="main" id="overall-main">
+    <div class="empty-msg">Loading…</div>
   </div>
 </div>
 
-<div class="main">
+<!-- ── Campus panels (one per campus, built by JS) ── -->
+<div id="panel-BEC" class="tab-panel"></div>
+<div id="panel-BMC" class="tab-panel"></div>
+<div id="panel-AEC" class="tab-panel"></div>
+<div id="panel-AMC" class="tab-panel"></div>
+<div id="panel-EEC" class="tab-panel"></div>
+<div id="panel-EMC" class="tab-panel"></div>
 
-<!-- ── CLASSROOMS ── -->
-<div class="section-block">
-  <div class="section-hdr">Classrooms</div>
-  <table class="space-table">
-    <thead>
-      <tr>
-        <th>Space</th>
-        <th class="status-col col-pill-mds">MDS</th>
-        <th class="status-col col-pill-sdo">SDO</th>
-        <th class="status-col col-pill-dof">DOF</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td><span class="space-name">American</span><span class="grade-pill">K</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
-      <tr><td><span class="space-name">Gallaudet</span><span class="grade-pill">K</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-minor">~</span></td></tr>
-      <tr><td><span class="space-name">George Mason</span><span class="grade-pill">1</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Johns Hopkins</span><span class="grade-pill">1</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
-      <tr><td><span class="space-name">Syracuse</span><span class="grade-pill">2</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Williams</span><span class="grade-pill">2</span></td><td class="status-col"><span class="dot dot-minor">~</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Northwestern</span><span class="grade-pill">3</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-bad">!</span></td></tr>
-      <tr><td><span class="space-name">UChicago</span><span class="grade-pill">3</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Dartmouth</span><span class="grade-pill">3</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">UPenn</span><span class="grade-pill">3</span></td><td class="status-col"><span class="dot dot-bad">!</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-    </tbody>
-  </table>
-</div>
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIG — paste your deployed Apps Script URL here
+// ─────────────────────────────────────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPbhFWpzKX6S6seb1c0QKplVM22LjZG6bkGMBnTNopry6dDr5YGtffKKR3EsFQ77n5BQ/exec';
 
-<!-- ── OUTDOOR ── -->
-<div class="section-block">
-  <div class="section-hdr">Outdoor</div>
-  <table class="space-table">
-    <thead>
-      <tr>
-        <th>Space</th>
-        <th class="status-col col-pill-mds">MDS</th>
-        <th class="status-col col-pill-sdo">SDO</th>
-        <th class="status-col col-pill-dof">DOF</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td><span class="space-name">Main entrance</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
-      <tr><td><span class="space-name">Playground / blacktop</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
-      <tr><td><span class="space-name">Drop-off / pick-up zone</span></td><td class="status-col"><span class="dot dot-na">—</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
-    </tbody>
-  </table>
-</div>
+// Campus metadata
+const CAMPUSES = [
+  {code:'BEC', name:'Benning Elementary'},
+  {code:'BMC', name:'Benning Middle'},
+  {code:'AEC', name:'Anacostia Elementary'},
+  {code:'AMC', name:'Anacostia Middle'},
+  {code:'EEC', name:'Edgewood Elementary'},
+  {code:'EMC', name:'Edgewood Middle'},
+];
 
-<!-- ── COMMON SPACES ── -->
-<div class="section-block">
-  <div class="section-hdr">Common Spaces</div>
-  <table class="space-table">
-    <thead>
-      <tr>
-        <th>Space</th>
-        <th class="status-col col-pill-mds">MDS</th>
-        <th class="status-col col-pill-sdo">SDO</th>
-        <th class="status-col col-pill-dof">DOF</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td><span class="space-name">Lobby / front desk</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
-      <tr><td><span class="space-name">Cafeteria</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-minor">~</span></td></tr>
-      <tr><td><span class="space-name">Gymnasium</span></td><td class="status-col"><span class="dot dot-bad">!</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Library / media center</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Music room</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
-      <tr><td><span class="space-name">Art room</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-na">—</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Nurse suite</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
-      <tr><td><span class="space-name">Hallways</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
-      <tr><td><span class="space-name">Stairwells</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
-      <tr><td><span class="space-name">Student restroom A</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
-      <tr><td><span class="space-name">Student restroom B</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Staff restroom</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-na">—</span></td></tr>
-    </tbody>
-  </table>
-</div>
+// Section order — Apps Script groups rooms into these sections via the
+// "Section" column in All Spaces. Match those exact strings here.
+const SECTION_ORDER = ['Classrooms','Outdoor','Common Spaces','Offices & Conference Rooms','Other'];
 
-<!-- ── OFFICES & CONFERENCE ROOMS ── -->
-<div class="section-block">
-  <div class="section-hdr">Offices &amp; Conference Rooms</div>
-  <table class="space-table">
-    <thead>
-      <tr>
-        <th>Space</th>
-        <th class="status-col col-pill-mds">MDS</th>
-        <th class="status-col col-pill-sdo">SDO</th>
-        <th class="status-col col-pill-dof">DOF</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td><span class="space-name">Principal office</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
-      <tr><td><span class="space-name">OSL office</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">K/1 Asst. Principal</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td></tr>
-      <tr><td><span class="space-name">2/3 Asst. Principal</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-minor">~</span></td></tr>
-      <tr><td><span class="space-name">SpEd coordinator</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Academic specialist</span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-      <tr><td><span class="space-name">Behavioral health office</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-ok">✓</span></td><td class="status-col"><span class="dot dot-blank"></span></td></tr>
-    </tbody>
-  </table>
-</div>
+// ── Data sources ──────────────────────────────────────────────────────────────
+// MDS / SDO / DOF statuses come from boy-readiness submissions (getBOYReadiness).
+// Tech status comes from the All Spaces tab col G (Tech helper column) which you
+// maintain. The Apps Script getBOYReadiness already returns a `tech` field per
+// room once that column is wired up; for now it falls back to null (not assessed).
+//
+// Classroom readiness (MDS) for classroom-section rooms additionally reads from
+// the legacy `readiness` flow (Classroom Readiness tab) via getBOYReadiness —
+// the Apps Script already merges those into the MDS field for classroom rows.
+// ─────────────────────────────────────────────────────────────────────────────
 
-</div><!-- /main -->
+// ── Dot helpers ───────────────────────────────────────────────────────────────
+function dotClass(assessment) {
+  if (!assessment) return 'dot-blank';
+  const a = assessment.toLowerCase();
+  if (a.includes('fully'))  return 'dot-ok';
+  if (a.includes('minor'))  return 'dot-minor';
+  if (a.includes('not ready')) return 'dot-bad';
+  if (a === 'n/a' || a === 'na') return 'dot-na';
+  if (a === 'ready') return 'dot-ok';           // Tech: "Ready"
+  if (a === 'issues') return 'dot-bad';          // Tech: "Issues"
+  if (a === 'resolved') return 'dot-ok';         // Tech: "Resolved"
+  return 'dot-blank';
+}
+
+function dotLabel(cls) {
+  if (cls === 'dot-ok')    return '✓';
+  if (cls === 'dot-minor') return '~';
+  if (cls === 'dot-bad')   return '!';
+  if (cls === 'dot-na')    return '—';
+  return '';
+}
+
+function makeDot(assessment, size) {
+  const cls = dotClass(assessment);
+  const lbl = dotLabel(cls);
+  const sz  = size || 22;
+  return `<span class="dot ${cls}" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*0.45)}px">${lbl}</span>`;
+}
+
+// ── Table builder ─────────────────────────────────────────────────────────────
+// rooms: [{space, section, MDS, SDO, DOF, tech}, ...]
+function buildSectionedTables(rooms) {
+  // Group by section
+  const groups = {};
+  const sectionOf = {};
+  rooms.forEach(r => {
+    const sec = r.section || 'Other';
+    if (!groups[sec]) groups[sec] = [];
+    groups[sec].push(r);
+    sectionOf[r.space] = sec;
+  });
+
+  // Render in SECTION_ORDER, then any remaining
+  const seenSections = new Set();
+  let html = '';
+
+  const ordered = [...SECTION_ORDER, ...Object.keys(groups).filter(s => !SECTION_ORDER.includes(s))];
+  ordered.forEach(sec => {
+    if (!groups[sec] || seenSections.has(sec)) return;
+    seenSections.add(sec);
+    html += `
+    <div class="section-block">
+      <div class="section-hdr">${sec}</div>
+      <table class="space-table">
+        <thead><tr>
+          <th>Space</th>
+          <th class="sc" style="color:var(--col-mds)">MDS</th>
+          <th class="sc" style="color:var(--col-sdo)">SDO</th>
+          <th class="sc" style="color:var(--col-dof)">DOF</th>
+          <th class="sc" style="color:var(--col-dot)">Tech</th>
+        </tr></thead>
+        <tbody>`;
+    groups[sec].forEach(r => {
+      html += `<tr>
+        <td><span class="space-name">${r.space}</span></td>
+        <td class="sc">${makeDot(r.MDS ? r.MDS.assessment : null)}</td>
+        <td class="sc">${makeDot(r.SDO ? r.SDO.assessment : null)}</td>
+        <td class="sc">${makeDot(r.DOF ? r.DOF.assessment : null)}</td>
+        <td class="sc">${makeDot(r.tech ? r.tech.assessment : null)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+  return html || '<div class="empty-msg">No spaces found for this campus.</div>';
+}
+
+// ── Overall: worst-case dot per (campus × section × track) ───────────────────
+function worstDot(rooms, section, track) {
+  const relevant = rooms.filter(r => (r.section || 'Other') === section);
+  if (!relevant.length) return null;
+
+  const priority = ['dot-bad','dot-minor','dot-blank','dot-ok','dot-na'];
+  let worst = 'dot-na';
+  relevant.forEach(r => {
+    const rec = track === 'tech' ? r.tech : r[track];
+    const cls = dotClass(rec ? rec.assessment : null);
+    if (priority.indexOf(cls) < priority.indexOf(worst)) worst = cls;
+  });
+  // If all were N/A, return na; if mix of na and blank, return blank
+  return worst;
+}
+
+function buildOverall(allData) {
+  // allData: { code: {rooms, summary, generated} }
+  const sections = ['Classrooms','Outdoor','Common Spaces','Offices & Conference Rooms'];
+  const tracks   = ['MDS','SDO','DOF','tech'];
+
+  // Network-wide progress (% of non-NA rooms with dot-ok per track)
+  function networkPct(track) {
+    let ok = 0, total = 0;
+    CAMPUSES.forEach(c => {
+      const d = allData[c.code];
+      if (!d) return;
+      d.rooms.forEach(r => {
+        const rec = track === 'tech' ? r.tech : r[track];
+        const cls = dotClass(rec ? rec.assessment : null);
+        if (cls === 'dot-na') return;
+        total++;
+        if (cls === 'dot-ok') ok++;
+      });
+    });
+    return total ? Math.round(ok / total * 100) : null;
+  }
+
+  const trackMeta = [
+    {key:'MDS',  label:'MDS (Schools)',  color:'var(--blue)'},
+    {key:'SDO',  label:'SDO (Ops)',      color:'#7c3aed'},
+    {key:'DOF',  label:'DOF (Facilities)',color:'#b45309'},
+    {key:'tech', label:'Tech (DoT)',     color:'#0891b2'},
+  ];
+
+  let barsHtml = trackMeta.map(t => {
+    const pct = networkPct(t.key);
+    const pctStr = pct !== null ? pct + '%' : '—';
+    const fillW  = pct !== null ? pct + '%' : '0%';
+    return `<div class="track-row">
+      <span class="track-label" style="color:${t.color}">${t.label}</span>
+      <div class="track-bar"><div class="track-fill" style="width:${fillW};background:${t.color}"></div></div>
+      <span class="track-pct">${pctStr}</span>
+    </div>`;
+  }).join('');
+
+  let cardsHtml = CAMPUSES.map(c => {
+    const d = allData[c.code];
+    const catRows = sections.map(sec => {
+      const dots = tracks.map(t => {
+        if (!d) return makeDot(null, 18);
+        const cls = worstDot(d.rooms, sec, t);
+        const lbl = dotLabel(cls || 'dot-blank');
+        return `<span class="dot ${cls || 'dot-blank'}" style="width:18px;height:18px;font-size:9px">${lbl}</span>`;
+      }).join('');
+      return `<div class="cat-row"><span class="cat-label">${sec}</span><div class="cat-dots">${dots}</div></div>`;
+    }).join('');
+
+    return `<div class="campus-card">
+      <div class="campus-card-hdr">
+        <span>${c.code}</span>
+        <span style="font-size:10px;font-weight:400;opacity:.7">${c.name}</span>
+      </div>
+      <div class="campus-card-body">${catRows}</div>
+    </div>`;
+  }).join('');
+
+  // Latest generated timestamp
+  const timestamps = CAMPUSES.map(c => allData[c.code] && allData[c.code].generated).filter(Boolean);
+  const genStr = timestamps.length ? timestamps[0] : '';
+
+  return `
+    <div class="net-summary">
+      <div class="net-summary-title">Network-wide signoff progress (fully ready, excl. N/A)</div>
+      ${barsHtml}
+    </div>
+    <div class="section-hdr" style="margin-bottom:12px">By campus &amp; category</div>
+    <div class="overall-grid">${cardsHtml}</div>
+    <div style="font-size:11px;color:var(--muted);padding-top:4px">
+      Dots show worst-case status per category:
+      <span style="color:var(--col-mds);font-weight:600">MDS</span> ·
+      <span style="color:var(--col-sdo);font-weight:600">SDO</span> ·
+      <span style="color:var(--col-dof);font-weight:600">DOF</span> ·
+      <span style="color:var(--col-dot);font-weight:600">Tech</span>
+      ${genStr ? '· Updated ' + genStr : ''}
+    </div>`;
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+const cache = {};  // campus code → data
+
+async function fetchCampus(code) {
+  if (cache[code]) return cache[code];
+  const url = `${SCRIPT_URL}?view=boy&campus=${code}`;
+  const res  = await fetch(url);
+  const data = await res.json();
+  cache[code] = data;
+  return data;
+}
+
+async function loadCampusPanel(code) {
+  const panel = document.getElementById(`panel-${code}`);
+  panel.innerHTML = '<div class="main"><div class="empty-msg">Loading…</div></div>';
+  try {
+    const data = await fetchCampus(code);
+    if (!data.rooms || !data.rooms.length) {
+      panel.innerHTML = '<div class="main"><div class="empty-msg">No submissions yet for ' + code + '.</div></div>';
+      return;
+    }
+    panel.innerHTML = `<div class="main">${buildSectionedTables(data.rooms)}</div>`;
+    document.getElementById('hdr-meta').textContent = `SY 2026–27 · ${data.generated || ''}`;
+  } catch(e) {
+    panel.innerHTML = `<div class="main"><div class="empty-msg" style="color:var(--red)">Error loading ${code} data. Check the Apps Script URL.</div></div>`;
+  }
+}
+
+async function loadOverall() {
+  const el = document.getElementById('overall-main');
+  el.innerHTML = '<div class="empty-msg">Loading all campuses…</div>';
+  try {
+    const allData = {};
+    await Promise.all(CAMPUSES.map(async c => {
+      try { allData[c.code] = await fetchCampus(c.code); }
+      catch(e) { allData[c.code] = {rooms:[], summary:{}}; }
+    }));
+    el.innerHTML = buildOverall(allData);
+  } catch(e) {
+    el.innerHTML = '<div class="empty-msg" style="color:var(--red)">Error loading data.</div>';
+  }
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+const loaded = new Set();
+
+function showTab(id, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.campus-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  el.classList.add('active');
+
+  if (!loaded.has(id)) {
+    loaded.add(id);
+    if (id === 'overall') {
+      loadOverall();
+    } else {
+      loadCampusPanel(id);
+    }
+  }
+}
+
+// ── Boot: load overall on page open ──────────────────────────────────────────
+loaded.add('overall');
+loadOverall();
+</script>
 </body>
 </html>
