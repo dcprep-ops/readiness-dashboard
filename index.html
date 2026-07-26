@@ -63,24 +63,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .empty-msg{color:var(--muted);font-size:13px;padding:40px 0;text-align:center}
 
 /* ── overall tab — vertical KPI cards ── */
-.net-summary{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:20px 20px 16px;margin-bottom:24px}
-.net-summary-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.net-summary{padding:20px 20px 16px;margin-bottom:24px}
+.net-summary-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.bar-legend{display:flex;gap:16px;margin-bottom:16px}
+.bar-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.bar-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .kpi-list{display:flex;flex-direction:column;gap:14px}
-.kpi-card{background:var(--bg);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi-card{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
 .kpi-name{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .kpi-pct{font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:12px}
 .kpi-pct-unit{font-size:16px;color:var(--muted);font-weight:400}
-.kpi-bar-track{height:36px;background:var(--border);border-radius:8px;overflow:hidden;display:flex}
-.seg-ok{background:var(--green);height:100%;display:flex;align-items:center;padding:0 10px;min-width:0}
-.seg-mn{background:var(--yellow);height:100%;display:flex;align-items:center;padding:0 8px;min-width:0}
+.kpi-bar-track{height:36px;background:rgba(0,0,0,.07);border-radius:8px;overflow:hidden;display:flex}
+.seg-ok{background:var(--green);height:100%;display:flex;align-items:center;padding:0 10px}
+.seg-mn{background:var(--yellow);height:100%;display:flex;align-items:center;padding:0 8px}
 .seg-label-ok{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
 .seg-label-mn{font-size:12px;font-weight:600;color:#78350f;white-space:nowrap;overflow:hidden}
-.kpi-na{background:var(--bg);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi-na{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
 .kpi-na-name{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .kpi-na-note{font-size:13px;color:var(--muted)}
-.bar-legend{display:flex;gap:16px;margin-top:16px;padding-top:14px;border-top:0.5px solid var(--border)}
-.bar-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
-.bar-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -268,18 +268,13 @@ function buildOverall(allData) {
       </div>`;
     }
     const combined = p.ok + p.minor;
-    const okW    = p.ok    + '%';
-    const minorW = p.minor + '%';
-    // Only show text label inside segment if wide enough (≥14%)
-    const okLabel    = p.ok    >= 14 ? `${p.ok}% fully ready`    : p.ok >= 6 ? `${p.ok}%` : '';
-    const minorLabel = p.minor >= 10 ? `${p.minor}% minor items`  : p.minor >= 5 ? `${p.minor}%` : '';
+    // Only render segments when > 0 to avoid hairline color bleed
+    const okSeg    = p.ok    > 0 ? `<div class="seg-ok" style="width:${p.ok}%"><span class="seg-label-ok">${p.ok >= 8 ? p.ok+'%' : ''}</span></div>` : '';
+    const minorSeg = p.minor > 0 ? `<div class="seg-mn" style="width:${p.minor}%"><span class="seg-label-mn">${p.minor >= 8 ? p.minor+'%' : ''}</span></div>` : '';
     return `<div class="kpi-card">
       <div class="kpi-name">${t.label}</div>
       <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
-      <div class="kpi-bar-track">
-        <div class="seg-ok" style="width:${okW}"><span class="seg-label-ok">${okLabel}</span></div>
-        <div class="seg-mn" style="width:${minorW}"><span class="seg-label-mn">${minorLabel}</span></div>
-      </div>
+      <div class="kpi-bar-track">${okSeg}${minorSeg}</div>
     </div>`;
   }).join('');
 
@@ -289,12 +284,12 @@ function buildOverall(allData) {
   return `
     <div class="net-summary">
       <div class="net-summary-title">Total Signoff Progress</div>
-      <div class="kpi-list">${cardsHtml}</div>
       <div class="bar-legend">
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
-        ${genStr ? `<span style="margin-left:auto;font-size:11px;color:var(--muted)">Updated ${genStr}</span>` : ''}
       </div>
+      <div class="kpi-list">${cardsHtml}</div>
+      ${genStr ? `<div style="font-size:11px;color:var(--muted);margin-top:16px">Updated ${genStr}</div>` : ''}
     </div>`;
 }
 
