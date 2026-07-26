@@ -24,10 +24,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .hdr-meta{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
 
 /* campus tabs */
-.campus-tabs{display:flex;gap:0;overflow-x:auto;background:rgba(0,0,0,.15);padding:0 20px}
-.campus-tab{font-size:12px;font-weight:600;color:rgba(255,255,255,.55);padding:9px 16px;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent;flex-shrink:0;transition:color .15s}
+.campus-tabs{display:flex;gap:0;overflow-x:auto;background:rgba(0,0,0,.15);padding:0 12px}
+.campus-tab{font-size:12px;font-weight:600;color:rgba(255,255,255,.55);padding:9px 0;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent;flex:1;text-align:center;min-width:0;transition:color .15s}
 .campus-tab.active{color:#fff;border-bottom-color:var(--gold)}
-.campus-tab.sep{border-right:1px solid rgba(255,255,255,.15);margin-right:8px}
+.campus-tab.sep{border-right:1px solid rgba(255,255,255,.15);padding-right:0;margin-right:0}
 
 /* ── legend ── */
 .legend{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--card);border-bottom:0.5px solid var(--border);flex-wrap:wrap}
@@ -62,22 +62,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .loading-row td{color:var(--muted);font-style:italic;text-align:center;padding:20px}
 .empty-msg{color:var(--muted);font-size:13px;padding:40px 0;text-align:center}
 
-/* ── overall tab ── */
-.overall-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px}
-@media(max-width:700px){.overall-grid{grid-template-columns:1fr}}
-.campus-card{background:var(--card);border:0.5px solid var(--border);border-radius:12px;overflow:hidden}
-.campus-card-hdr{background:var(--blue);color:#fff;font-size:12px;font-weight:700;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
-.cat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:0.5px solid var(--border);font-size:12px}
-.cat-row:last-child{border-bottom:none}
-.cat-dots{display:flex;gap:5px;align-items:center}
-.cat-dots .dot{width:18px;height:18px;font-size:9px}
-.net-summary{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:24px}
-.net-summary-title{font-size:13px;font-weight:700;margin-bottom:12px}
-.track-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.track-label{font-size:11px;font-weight:700;width:108px;flex-shrink:0}
-.track-bar{flex:1;height:10px;background:var(--lt);border-radius:5px;overflow:hidden}
-.track-fill{height:100%;border-radius:5px;transition:width .4s ease}
-.track-pct{font-size:11px;color:var(--muted);width:36px;text-align:right;flex-shrink:0}
+/* ── overall tab — stacked bar chart ── */
+.net-summary{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:24px}
+.net-summary-title{font-size:15px;font-weight:700;margin-bottom:20px;color:var(--text)}
+.track-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.track-label{font-size:13px;font-weight:600;width:110px;flex-shrink:0;color:var(--text)}
+.track-bar{flex:1;height:20px;background:var(--lt);border-radius:6px;overflow:hidden;display:flex}
+.track-fill-ok   {height:100%;background:var(--green);transition:width .5s ease}
+.track-fill-minor{height:100%;background:var(--yellow);transition:width .5s ease}
+.track-pct{font-size:13px;color:var(--muted);width:42px;text-align:right;flex-shrink:0}
+.bar-legend{display:flex;gap:16px;margin-top:16px;padding-top:14px;border-top:0.5px solid var(--border)}
+.bar-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.bar-legend-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -102,14 +98,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<div class="legend">
-  <span class="legend-title">Status</span>
-  <span class="legend-item"><span class="dot dot-ok">✓</span> Fully ready</span>
-  <span class="legend-item"><span class="dot dot-minor">~</span> Minor items</span>
-  <span class="legend-item"><span class="dot dot-bad">!</span> Not ready</span>
-  <span class="legend-item"><span class="dot dot-blank"></span> Not assessed</span>
-  <span class="legend-item"><span class="dot dot-na">—</span> N/A</span>
-</div>
+<!-- legend moved inline to campus tab panels -->
 
 <!-- ── Overall Status panel ── -->
 <div id="panel-overall" class="tab-panel active">
@@ -187,21 +176,26 @@ function makeDot(assessment, size) {
 }
 
 // ── Table builder ─────────────────────────────────────────────────────────────
-// rooms: [{space, section, MDS, SDO, DOF, tech}, ...]
+const INLINE_LEGEND = `
+  <div style="display:flex;align-items:center;gap:14px;padding:10px 0 16px;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase">Status</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-ok" style="width:18px;height:18px;font-size:9px">✓</span> Fully ready</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-minor" style="width:18px;height:18px;font-size:9px">~</span> Minor items</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-bad" style="width:18px;height:18px;font-size:9px">!</span> Not ready</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-blank" style="width:18px;height:18px"></span> Not assessed</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-na" style="width:18px;height:18px;font-size:8px">—</span> N/A</span>
+  </div>`;
+
 function buildSectionedTables(rooms) {
-  // Group by section
   const groups = {};
-  const sectionOf = {};
   rooms.forEach(r => {
     const sec = r.section || 'Other';
     if (!groups[sec]) groups[sec] = [];
     groups[sec].push(r);
-    sectionOf[r.space] = sec;
   });
 
-  // Render in SECTION_ORDER, then any remaining
   const seenSections = new Set();
-  let html = '';
+  let html = INLINE_LEGEND;
 
   const ordered = [...SECTION_ORDER, ...Object.keys(groups).filter(s => !SECTION_ORDER.includes(s))];
   ordered.forEach(sec => {
@@ -213,18 +207,18 @@ function buildSectionedTables(rooms) {
       <table class="space-table">
         <thead><tr>
           <th>Space</th>
-          <th class="sc" style="color:var(--col-mds)">MDS</th>
-          <th class="sc" style="color:var(--col-sdo)">SDO</th>
-          <th class="sc" style="color:var(--col-dof)">DOF</th>
+          <th class="sc" style="color:var(--col-mds)">Schools</th>
+          <th class="sc" style="color:var(--col-sdo)">Ops</th>
+          <th class="sc" style="color:var(--col-dof)">Facilities</th>
           <th class="sc" style="color:var(--col-dot)">Tech</th>
         </tr></thead>
         <tbody>`;
     groups[sec].forEach(r => {
       html += `<tr>
         <td><span class="space-name">${r.space}</span></td>
-        <td class="sc">${makeDot(r.MDS ? r.MDS.assessment : null)}</td>
-        <td class="sc">${makeDot(r.SDO ? r.SDO.assessment : null)}</td>
-        <td class="sc">${makeDot(r.DOF ? r.DOF.assessment : null)}</td>
+        <td class="sc">${makeDot(r.MDS  ? r.MDS.assessment  : null)}</td>
+        <td class="sc">${makeDot(r.SDO  ? r.SDO.assessment  : null)}</td>
+        <td class="sc">${makeDot(r.DOF  ? r.DOF.assessment  : null)}</td>
         <td class="sc">${makeDot(r.tech ? r.tech.assessment : null)}</td>
       </tr>`;
     });
@@ -233,30 +227,10 @@ function buildSectionedTables(rooms) {
   return html || '<div class="empty-msg">No spaces found for this campus.</div>';
 }
 
-// ── Overall: worst-case dot per (campus × section × track) ───────────────────
-function worstDot(rooms, section, track) {
-  const relevant = rooms.filter(r => (r.section || 'Other') === section);
-  if (!relevant.length) return null;
-
-  const priority = ['dot-bad','dot-minor','dot-blank','dot-ok','dot-na'];
-  let worst = 'dot-na';
-  relevant.forEach(r => {
-    const rec = track === 'tech' ? r.tech : r[track];
-    const cls = dotClass(rec ? rec.assessment : null);
-    if (priority.indexOf(cls) < priority.indexOf(worst)) worst = cls;
-  });
-  // If all were N/A, return na; if mix of na and blank, return blank
-  return worst;
-}
-
 function buildOverall(allData) {
-  // allData: { code: {rooms, summary, generated} }
-  const sections = ['Classrooms','Outdoor','Common Spaces','Offices & Conference Rooms'];
-  const tracks   = ['MDS','SDO','DOF','tech'];
-
-  // Network-wide progress (% of non-NA rooms with dot-ok per track)
-  function networkPct(track) {
-    let ok = 0, total = 0;
+  // Network-wide stacked bar: ok pct + minor pct per track, excluding N/A
+  function networkPcts(track) {
+    let ok = 0, minor = 0, total = 0;
     CAMPUSES.forEach(c => {
       const d = allData[c.code];
       if (!d) return;
@@ -265,69 +239,49 @@ function buildOverall(allData) {
         const cls = dotClass(rec ? rec.assessment : null);
         if (cls === 'dot-na') return;
         total++;
-        if (cls === 'dot-ok') ok++;
+        if (cls === 'dot-ok')    ok++;
+        if (cls === 'dot-minor') minor++;
       });
     });
-    return total ? Math.round(ok / total * 100) : null;
+    return total
+      ? { ok: Math.round(ok/total*100), minor: Math.round(minor/total*100), total }
+      : null;
   }
 
   const trackMeta = [
-    {key:'MDS',  label:'MDS (Schools)',  color:'var(--blue)'},
-    {key:'SDO',  label:'SDO (Ops)',      color:'#7c3aed'},
-    {key:'DOF',  label:'DOF (Facilities)',color:'#b45309'},
-    {key:'tech', label:'Tech (DoT)',     color:'#0891b2'},
+    {key:'MDS',  label:'Schools'},
+    {key:'SDO',  label:'Operations'},
+    {key:'DOF',  label:'Facilities'},
+    {key:'tech', label:'Tech'},
   ];
 
-  let barsHtml = trackMeta.map(t => {
-    const pct = networkPct(t.key);
-    const pctStr = pct !== null ? pct + '%' : '—';
-    const fillW  = pct !== null ? pct + '%' : '0%';
+  const barsHtml = trackMeta.map(t => {
+    const p = networkPcts(t.key);
+    const okW    = p ? p.ok    + '%' : '0%';
+    const minorW = p ? p.minor + '%' : '0%';
+    const totalPct = p ? (p.ok + p.minor) + '%' : '—';
     return `<div class="track-row">
-      <span class="track-label" style="color:${t.color}">${t.label}</span>
-      <div class="track-bar"><div class="track-fill" style="width:${fillW};background:${t.color}"></div></div>
-      <span class="track-pct">${pctStr}</span>
-    </div>`;
-  }).join('');
-
-  let cardsHtml = CAMPUSES.map(c => {
-    const d = allData[c.code];
-    const catRows = sections.map(sec => {
-      const dots = tracks.map(t => {
-        if (!d) return makeDot(null, 18);
-        const cls = worstDot(d.rooms, sec, t);
-        const lbl = dotLabel(cls || 'dot-blank');
-        return `<span class="dot ${cls || 'dot-blank'}" style="width:18px;height:18px;font-size:9px">${lbl}</span>`;
-      }).join('');
-      return `<div class="cat-row"><span class="cat-label">${sec}</span><div class="cat-dots">${dots}</div></div>`;
-    }).join('');
-
-    return `<div class="campus-card">
-      <div class="campus-card-hdr">
-        <span>${c.code}</span>
-        <span style="font-size:10px;font-weight:400;opacity:.7">${c.name}</span>
+      <span class="track-label">${t.label}</span>
+      <div class="track-bar">
+        <div class="track-fill-ok"    style="width:${okW}"></div>
+        <div class="track-fill-minor" style="width:${minorW}"></div>
       </div>
-      <div class="campus-card-body">${catRows}</div>
+      <span class="track-pct">${totalPct}</span>
     </div>`;
   }).join('');
 
-  // Latest generated timestamp
   const timestamps = CAMPUSES.map(c => allData[c.code] && allData[c.code].generated).filter(Boolean);
   const genStr = timestamps.length ? timestamps[0] : '';
 
   return `
     <div class="net-summary">
-      <div class="net-summary-title">Network-wide signoff progress (fully ready, excl. N/A)</div>
+      <div class="net-summary-title">Total Signoff Progress</div>
       ${barsHtml}
-    </div>
-    <div class="section-hdr" style="margin-bottom:12px">By campus &amp; category</div>
-    <div class="overall-grid">${cardsHtml}</div>
-    <div style="font-size:11px;color:var(--muted);padding-top:4px">
-      Dots show worst-case status per category:
-      <span style="color:var(--col-mds);font-weight:600">MDS</span> ·
-      <span style="color:var(--col-sdo);font-weight:600">SDO</span> ·
-      <span style="color:var(--col-dof);font-weight:600">DOF</span> ·
-      <span style="color:var(--col-dot);font-weight:600">Tech</span>
-      ${genStr ? '· Updated ' + genStr : ''}
+      <div class="bar-legend">
+        <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
+        <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
+        <span class="bar-legend-item" style="margin-left:auto;font-size:11px">${genStr ? 'Updated ' + genStr : ''}</span>
+      </div>
     </div>`;
 }
 
