@@ -182,7 +182,7 @@ const CAMPUSES = [
 const SECTION_ORDER = ['Classrooms','Outdoor','Common Spaces','Offices & Conference Rooms','Other'];
 
 // ── Data sources ──────────────────────────────────────────────────────────────
-// MDS / SDO / DOF statuses come from boy-readiness submissions (getBOYReadiness).
+// MDS / SDO statuses come from boy-readiness submissions (getBOYReadiness).
 // Tech status comes from the All Spaces tab col G (Tech helper column) which you
 // maintain. The Apps Script getBOYReadiness already returns a `tech` field per
 // room once that column is wired up; for now it falls back to null (not assessed).
@@ -255,7 +255,6 @@ function buildSectionedTables(rooms) {
           <th>Space</th>
           <th class="sc">Schools</th>
           <th class="sc">Ops</th>
-          <th class="sc">Facilities</th>
           <th class="sc">Tech</th>
         </tr></thead>
         <tbody>`;
@@ -264,13 +263,46 @@ function buildSectionedTables(rooms) {
         <td><span class="space-name">${r.space}</span></td>
         <td class="sc">${makeDot(r.MDS  ? r.MDS.assessment  : null)}</td>
         <td class="sc">${makeDot(r.SDO  ? r.SDO.assessment  : null)}</td>
-        <td class="sc">${makeDot(r.DOF  ? r.DOF.assessment  : null)}</td>
         <td class="sc">${makeDot(r.tech ? r.tech.assessment : null)}</td>
       </tr>`;
     });
     html += `</tbody></table></div>`;
   });
   return html || '<div class="empty-msg">No spaces found for this campus.</div>';
+}
+
+// Per-campus signoff progress: counts individual signoff cells (Schools, Ops,
+// Tech) across all rooms — not whole spaces — so partial adoption (e.g. Tech
+// keeps logging even if Schools/Ops haven't started using the app) still
+// shows real progress.
+function buildCampusProgress(rooms) {
+  const tracks = ['MDS', 'SDO', 'tech'];
+  let ok = 0, minor = 0, total = 0;
+  rooms.forEach(r => {
+    tracks.forEach(track => {
+      const rec = track === 'tech' ? r.tech : r[track];
+      const cls = dotClass(rec ? rec.assessment : null);
+      if (cls === 'dot-na') return;
+      total++;
+      if (cls === 'dot-ok')    ok++;
+      if (cls === 'dot-minor') minor++;
+    });
+  });
+  if (!total) return '';
+  const okPct    = Math.round(ok    / total * 100);
+  const minorPct = Math.round(minor / total * 100);
+  const combined = okPct + minorPct;
+  const okSeg    = okPct    > 0 ? `<div class="seg-ok" style="width:${okPct}%"><span class="seg-label-ok">${okPct >= 8 ? okPct+'%' : ''}</span></div>` : '';
+  const minorSeg = minorPct > 0 ? `<div class="seg-mn" style="width:${minorPct}%"><span class="seg-label-mn">${minorPct >= 8 ? minorPct+'%' : ''}</span></div>` : '';
+  return `<div class="net-summary">
+    <div class="net-summary-title">Signoff Progress</div>
+    <div class="bar-legend">
+      <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
+      <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
+    </div>
+    <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
+    <div class="kpi-bar-track">${okSeg}${minorSeg}</div>
+  </div>`;
 }
 
 function buildOverall(allData) {
@@ -294,7 +326,6 @@ function buildOverall(allData) {
   const trackMeta = [
     {key:'MDS',  label:'Schools'},
     {key:'SDO',  label:'Operations'},
-    {key:'DOF',  label:'Facilities'},
     {key:'tech', label:'Tech'},
   ];
 
@@ -353,7 +384,7 @@ async function loadCampusPanel(code) {
       panel.innerHTML = '<div class="main"><div class="empty-msg">No submissions yet for ' + code + '.</div></div>';
       return;
     }
-    panel.innerHTML = `<div class="main">${buildSectionedTables(data.rooms)}</div>`;
+    panel.innerHTML = `<div class="main">${buildCampusProgress(data.rooms)}${buildSectionedTables(data.rooms)}</div>`;
     document.getElementById('hdr-meta').textContent = `SY 2026–27 · ${data.generated || ''}`;
   } catch(e) {
     panel.innerHTML = `<div class="main"><div class="empty-msg" style="color:var(--red)">Error loading ${code} data. Check the Apps Script URL.</div></div>`;
