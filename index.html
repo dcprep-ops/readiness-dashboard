@@ -181,7 +181,7 @@ const CAMPUSES = [
 
 // Section order — Apps Script groups rooms into these sections via the
 // "Section" column in All Spaces. Match those exact strings here.
-const SECTION_ORDER = ['Classrooms','Outdoor','Common Spaces','Offices & Conference Rooms','Other'];
+const SECTION_ORDER = ['Classrooms','Shared Student Spaces','Restrooms','Common Spaces','Offices','Staff Common Spaces','Technology'];
 
 // ── Data sources ──────────────────────────────────────────────────────────────
 // MDS / SDO statuses come from boy-readiness submissions (getBOYReadiness).
@@ -263,7 +263,7 @@ function buildSectionedTables(rooms) {
     groups[sec].forEach(r => {
       const hasCounts = sec === 'Classrooms' && (r.deskCount || r.chairCount);
       html += `<tr${hasCounts ? ' class="tight"' : ''}>
-        <td><span class="space-name">${r.space}</span></td>
+        <td><span class="space-name">${r.space}${r.roomNumber ? ` (${r.roomNumber})` : ''}</span></td>
         <td class="sc">${makeDot(r.MDS  ? r.MDS.assessment  : null)}</td>
         <td class="sc">${makeDot(r.SDO  ? r.SDO.assessment  : null)}</td>
         <td class="sc">${makeDot(r.tech ? r.tech.assessment : null)}</td>
