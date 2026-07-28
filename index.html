@@ -64,6 +64,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .space-table tr:hover td{background:#f8fbff}
 .space-table td.sc{text-align:center;vertical-align:middle;padding:7px 4px}
 .space-name{font-weight:500}
+.space-table tr.tight td{border-bottom:none}
+.space-counts-row td{padding:0 12px 8px;font-size:11px;color:var(--muted)}
 
 /* ── loading / error states ── */
 .loading-row td{color:var(--muted);font-style:italic;text-align:center;padding:20px}
@@ -259,12 +261,16 @@ function buildSectionedTables(rooms) {
         </tr></thead>
         <tbody>`;
     groups[sec].forEach(r => {
-      html += `<tr>
+      const hasCounts = sec === 'Classrooms' && (r.deskCount || r.chairCount);
+      html += `<tr${hasCounts ? ' class="tight"' : ''}>
         <td><span class="space-name">${r.space}</span></td>
         <td class="sc">${makeDot(r.MDS  ? r.MDS.assessment  : null)}</td>
         <td class="sc">${makeDot(r.SDO  ? r.SDO.assessment  : null)}</td>
         <td class="sc">${makeDot(r.tech ? r.tech.assessment : null)}</td>
       </tr>`;
+      if (hasCounts) {
+        html += `<tr class="space-counts-row"><td colspan="4">${r.deskCount || '—'} desks · ${r.chairCount || '—'} chairs</td></tr>`;
+      }
     });
     html += `</tbody></table></div>`;
   });
