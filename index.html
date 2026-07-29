@@ -48,6 +48,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dot-bad   {background:var(--red);   color:#fff}
 .dot-blank {background:#fff;border:1.5px solid #cbd5e1}
 .dot-na    {background:var(--lt);color:var(--muted);font-size:8px;font-weight:600}
+.dot-pending {background:#378ADD;color:#fff}
 
 /* ── main ── */
 .main{max-width:1100px;margin:0 auto;padding:16px 20px 40px}
@@ -99,8 +100,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .kpi-pct-unit{font-size:16px;color:var(--muted);font-weight:400}
 .kpi-bar-track{height:36px;background:rgba(0,0,0,.07);border-radius:8px;overflow:hidden;display:flex}
 .seg-ok{background:var(--green);height:100%;display:flex;align-items:center;padding:0 10px}
+.seg-pending{background:#378ADD;height:100%;display:flex;align-items:center;padding:0 8px}
 .seg-mn{background:var(--yellow);height:100%;display:flex;align-items:center;padding:0 8px}
 .seg-label-ok{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
+.seg-label-pending{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
 .seg-label-mn{font-size:12px;font-weight:600;color:#78350f;white-space:nowrap;overflow:hidden}
 .kpi-na{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
 .kpi-na-name{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
@@ -200,6 +203,7 @@ const SECTION_ORDER = ['Classrooms','Shared Student Spaces','Restrooms','Common 
 function dotClass(assessment) {
   if (!assessment) return 'dot-blank';
   const a = assessment.toLowerCase();
+  if (a.includes('pending sdo signoff')) return 'dot-pending';
   if (a.includes('fully'))  return 'dot-ok';
   if (a.includes('minor'))  return 'dot-minor';
   if (a.includes('not ready')) return 'dot-bad';
@@ -215,6 +219,7 @@ function dotLabel(cls) {
   if (cls === 'dot-minor') return '~';
   if (cls === 'dot-bad')   return '!';
   if (cls === 'dot-na')    return '—';
+  if (cls === 'dot-pending') return '⏳';
   return '';
 }
 
@@ -230,6 +235,7 @@ const INLINE_LEGEND = `
   <div style="display:flex;align-items:center;gap:14px;padding:10px 0 16px;flex-wrap:wrap">
     <span style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase">Status</span>
     <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-ok" style="width:18px;height:18px;font-size:9px">✓</span> Fully ready</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-pending" style="width:18px;height:18px;font-size:9px">⏳</span> Pending SDO signoff</span>
     <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-minor" style="width:18px;height:18px;font-size:9px">~</span> Minor items</span>
     <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-bad" style="width:18px;height:18px;font-size:9px">!</span> Not ready</span>
     <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-blank" style="width:18px;height:18px"></span> Not assessed</span>
@@ -285,31 +291,35 @@ function buildSectionedTables(rooms) {
 // shows real progress.
 function buildCampusProgress(rooms) {
   const tracks = ['MDS', 'SDO', 'tech'];
-  let ok = 0, minor = 0, total = 0;
+  let ok = 0, minor = 0, pending = 0, total = 0;
   rooms.forEach(r => {
     tracks.forEach(track => {
       const rec = track === 'tech' ? r.tech : r[track];
       const cls = dotClass(rec ? rec.assessment : null);
       if (cls === 'dot-na') return;
       total++;
-      if (cls === 'dot-ok')    ok++;
-      if (cls === 'dot-minor') minor++;
+      if (cls === 'dot-ok')      ok++;
+      if (cls === 'dot-minor')  minor++;
+      if (cls === 'dot-pending') pending++;
     });
   });
   if (!total) return '';
-  const okPct    = Math.round(ok    / total * 100);
-  const minorPct = Math.round(minor / total * 100);
+  const okPct      = Math.round(ok      / total * 100);
+  const minorPct   = Math.round(minor   / total * 100);
+  const pendingPct = Math.round(pending / total * 100);
   const combined = okPct + minorPct;
-  const okSeg    = okPct    > 0 ? `<div class="seg-ok" style="width:${okPct}%"><span class="seg-label-ok">${okPct >= 8 ? okPct+'%' : ''}</span></div>` : '';
-  const minorSeg = minorPct > 0 ? `<div class="seg-mn" style="width:${minorPct}%"><span class="seg-label-mn">${minorPct >= 8 ? minorPct+'%' : ''}</span></div>` : '';
+  const okSeg      = okPct      > 0 ? `<div class="seg-ok" style="width:${okPct}%"><span class="seg-label-ok">${okPct >= 8 ? okPct+'%' : ''}</span></div>` : '';
+  const minorSeg   = minorPct   > 0 ? `<div class="seg-mn" style="width:${minorPct}%"><span class="seg-label-mn">${minorPct >= 8 ? minorPct+'%' : ''}</span></div>` : '';
+  const pendingSeg = pendingPct > 0 ? `<div class="seg-pending" style="width:${pendingPct}%"><span class="seg-label-pending">${pendingPct >= 8 ? pendingPct+'%' : ''}</span></div>` : '';
   return `<div class="net-summary">
     <div class="net-summary-title">Signoff Progress</div>
     <div class="bar-legend">
       <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
+      <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:#378ADD"></span>Pending SDO signoff</span>
       <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
     </div>
     <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
-    <div class="kpi-bar-track">${okSeg}${minorSeg}</div>
+    <div class="kpi-bar-track">${okSeg}${pendingSeg}${minorSeg}</div>
   </div>`;
 }
 
