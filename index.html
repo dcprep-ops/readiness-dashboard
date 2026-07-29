@@ -88,7 +88,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #app-loading-overlay.hidden{opacity:0;pointer-events:none}
 
 /* ── overall tab — vertical KPI cards ── */
-.net-summary{padding:20px 20px 16px;margin-bottom:24px}
+.net-summary{padding:20px 0 16px;margin-bottom:24px}
 .net-summary-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .bar-legend{display:flex;gap:16px;margin-bottom:16px}
 .bar-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
@@ -313,13 +313,8 @@ function buildCampusProgress(rooms) {
   const pendingSeg = pendingPct > 0 ? `<div class="seg-pending" style="width:${pendingPct}%"><span class="seg-label-pending">${pendingPct >= 8 ? pendingPct+'%' : ''}</span></div>` : '';
   return `<div class="net-summary">
     <div class="net-summary-title">Signoff Progress</div>
-    <div class="bar-legend">
-      <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
-      <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:#378ADD"></span>Pending SDO signoff</span>
-      <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
-    </div>
     <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
-    <div class="kpi-bar-track">${okSeg}${pendingSeg}${minorSeg}</div>
+    <div class="kpi-bar-track" style="margin-bottom:24px">${okSeg}${pendingSeg}${minorSeg}</div>
   </div>`;
 }
 
