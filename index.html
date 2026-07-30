@@ -289,7 +289,6 @@ function buildSectionedTables(rooms) {
       <table class="space-table">
         <thead><tr>
           <th>Space</th>
-          <th class="sc">Schools</th>
           <th class="sc">Ops</th>
           <th class="sc">Tech</th>
         </tr></thead>
@@ -298,12 +297,11 @@ function buildSectionedTables(rooms) {
       const hasCounts = sec === 'Classrooms' && (r.deskCount || r.chairCount);
       html += `<tr${hasCounts ? ' class="tight"' : ''}>
         <td><span class="space-name">${r.space}</span>${r.roomNumber ? ` <span class="space-room-num">(${r.roomNumber})</span>` : ''}</td>
-        <td class="sc">${makeDot(r.MDS  ? r.MDS.assessment  : null)}</td>
         <td class="sc">${makeDot(r.SDO  ? r.SDO.assessment  : null)}</td>
         <td class="sc">${makeDot(r.tech ? r.tech.assessment : null)}</td>
       </tr>`;
       if (hasCounts) {
-        html += `<tr class="space-counts-row"><td colspan="4">${r.deskCount || '—'} desks · ${r.chairCount || '—'} chairs</td></tr>`;
+        html += `<tr class="space-counts-row"><td colspan="3">${r.deskCount || '—'} desks · ${r.chairCount || '—'} chairs</td></tr>`;
       }
     });
     html += `</tbody></table></div>`;
@@ -313,10 +311,10 @@ function buildSectionedTables(rooms) {
 
 // Per-campus signoff progress: counts individual signoff cells (Schools, Ops,
 // Tech) across all rooms — not whole spaces — so partial adoption (e.g. Tech
-// keeps logging even if Schools/Ops haven't started using the app) still
-// shows real progress.
+// keeps logging even if Ops hasn't started using the app) still shows real
+// progress. Schools/MDS is no longer part of readiness tracking.
 function buildCampusProgress(rooms) {
-  const tracks = ['MDS', 'SDO', 'tech'];
+  const tracks = ['SDO', 'tech'];
   let ok = 0, minor = 0, pending = 0, total = 0;
   rooms.forEach(r => {
     tracks.forEach(track => {
@@ -363,7 +361,6 @@ function buildOverall(allData) {
   }
 
   const trackMeta = [
-    {key:'MDS',  label:'Schools'},
     {key:'SDO',  label:'Operations'},
     {key:'tech', label:'Tech'},
   ];
