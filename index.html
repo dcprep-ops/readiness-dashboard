@@ -426,22 +426,27 @@ function countBusinessDays(start, end) {
 }
 
 // Returns { totalRemaining, bySection: { sectionName: {Anacostia,Benning,Edgewood} } }
-// "Remaining" = the Operations (SDO) signoff isn't yet confirmed Fully ready —
-// matches the OSL/SDO framework where SDO's confirmation is what closes a room out.
+// "Remaining" = a signoff (Operations or Tech) isn't yet confirmed Fully ready —
+// each track is counted separately, so a room can contribute up to 2 remaining
+// signoffs (one per track) if neither has been confirmed yet.
 function computeSpacesRemaining(allData) {
   const bySection = {};
   let totalRemaining = 0;
+  const tracks = ['SDO', 'tech'];
   CAMPUSES.forEach(c => {
     const d = allData[c.code];
     if (!d || !d.rooms) return;
     const cluster = CLUSTER_MAP[c.code];
     d.rooms.forEach(r => {
-      const cls = dotClass(r.SDO ? r.SDO.assessment : null);
-      if (cls === 'dot-na' || cls === 'dot-ok') return;
-      const sec = r.section || 'Other';
-      if (!bySection[sec]) bySection[sec] = {Anacostia:0, Benning:0, Edgewood:0};
-      bySection[sec][cluster]++;
-      totalRemaining++;
+      tracks.forEach(track => {
+        const rec = track === 'tech' ? r.tech : r[track];
+        const cls = dotClass(rec ? rec.assessment : null);
+        if (cls === 'dot-na' || cls === 'dot-ok') return;
+        const sec = r.section || 'Other';
+        if (!bySection[sec]) bySection[sec] = {Anacostia:0, Benning:0, Edgewood:0};
+        bySection[sec][cluster]++;
+        totalRemaining++;
+      });
     });
   });
   return { totalRemaining, bySection };
