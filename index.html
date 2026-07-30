@@ -314,31 +314,24 @@ function buildSectionedTables(rooms) {
 // keeps logging even if Ops hasn't started using the app) still shows real
 // progress. Schools/MDS is no longer part of readiness tracking.
 function buildCampusProgress(rooms) {
-  const tracks = ['SDO', 'tech'];
-  let ok = 0, minor = 0, pending = 0, total = 0;
+  let ok = 0, minor = 0, total = 0;
   rooms.forEach(r => {
-    tracks.forEach(track => {
-      const rec = track === 'tech' ? r.tech : r[track];
-      const cls = dotClass(rec ? rec.assessment : null);
-      if (cls === 'dot-na') return;
-      total++;
-      if (cls === 'dot-ok')      ok++;
-      if (cls === 'dot-minor')  minor++;
-      if (cls === 'dot-pending') pending++;
-    });
+    const cls = combinedSpaceStatus(r);
+    if (cls === 'dot-na') return;
+    total++;
+    if (cls === 'dot-ok')    ok++;
+    if (cls === 'dot-minor') minor++;
   });
   if (!total) return '';
-  const okPct      = Math.round(ok      / total * 100);
-  const minorPct   = Math.round(minor   / total * 100);
-  const pendingPct = Math.round(pending / total * 100);
+  const okPct    = Math.round(ok    / total * 100);
+  const minorPct = Math.round(minor / total * 100);
   const combined = okPct + minorPct;
-  const okSeg      = okPct      > 0 ? `<div class="seg-ok" style="width:${okPct}%"><span class="seg-label-ok">${okPct >= 8 ? okPct+'%' : ''}</span></div>` : '';
-  const minorSeg   = minorPct   > 0 ? `<div class="seg-mn" style="width:${minorPct}%"><span class="seg-label-mn">${minorPct >= 8 ? minorPct+'%' : ''}</span></div>` : '';
-  const pendingSeg = pendingPct > 0 ? `<div class="seg-pending" style="width:${pendingPct}%"><span class="seg-label-pending">${pendingPct >= 8 ? pendingPct+'%' : ''}</span></div>` : '';
+  const okSeg    = okPct    > 0 ? `<div class="seg-ok" style="width:${okPct}%"><span class="seg-label-ok">${okPct >= 8 ? okPct+'%' : ''}</span></div>` : '';
+  const minorSeg = minorPct > 0 ? `<div class="seg-mn" style="width:${minorPct}%"><span class="seg-label-mn">${minorPct >= 8 ? minorPct+'%' : ''}</span></div>` : '';
   return `<div class="net-summary">
-    <div class="net-summary-title">Signoff Progress</div>
+    <div class="net-summary-title">Space Readiness Progress</div>
     <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
-    <div class="kpi-bar-track" style="margin-bottom:24px">${okSeg}${pendingSeg}${minorSeg}</div>
+    <div class="kpi-bar-track" style="margin-bottom:24px">${okSeg}${minorSeg}</div>
   </div>`;
 }
 
@@ -377,8 +370,8 @@ function buildOverall(allData) {
   }
 
   const trackMeta = [
-    {key:'SDO',  label:'Operations'},
-    {key:'tech', label:'Tech'},
+    {key:'SDO',  label:'Operations Signoffs'},
+    {key:'tech', label:'Tech Signoffs'},
   ];
 
   const cardsHtml = trackMeta.map(t => {
@@ -397,7 +390,6 @@ function buildOverall(allData) {
       <div class="kpi-name">${t.label}</div>
       <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
       <div class="kpi-bar-track">${okSeg}${minorSeg}</div>
-      <div class="kpi-needed"><span class="kpi-needed-num">${p.needed}</span> signoffs needed</div>
     </div>`;
   }).join('');
 
@@ -411,7 +403,6 @@ function buildOverall(allData) {
       <div class="kpi-name">Total Spaces Ready</div>
       <div class="kpi-pct">${spaceCombined}<span class="kpi-pct-unit">%</span></div>
       <div class="kpi-bar-track">${spaceOkSeg}${spaceMinorSeg}</div>
-      <div class="kpi-needed"><span class="kpi-needed-num">${spaceP.needed}</span> spaces need attention</div>
     </div>`;
   }
 
@@ -420,7 +411,6 @@ function buildOverall(allData) {
 
   return `
     <div class="net-summary">
-      <div class="net-summary-title">Total Signoff Progress</div>
       <div class="bar-legend">
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
@@ -623,7 +613,7 @@ function computeSpaceRemaining(allData) {
 function buildSpaceBurndownChart(totalRemaining) {
   if (!totalRemaining) {
     return `<div class="progress-block">
-      <div class="progress-block-title">BURNDOWN — SPACES</div>
+      <div class="progress-block-title">BURNDOWN</div>
       <div class="chart-headline"><span class="num">0</span><span class="lbl">spaces remaining — fully caught up!</span></div>
     </div>`;
   }
@@ -646,7 +636,7 @@ function buildSpaceBurndownChart(totalRemaining) {
   const todayY = yFor(totalRemaining);
 
   return `<div class="progress-block">
-    <div class="progress-block-title">BURNDOWN — SPACES</div>
+    <div class="progress-block-title">BURNDOWN</div>
     <div class="chart-headline"><span class="num">${totalRemaining}</span><span class="lbl">spaces remaining</span></div>
     <div class="chart-legend">
       <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#94a3b8"></span>Ideal pace</span>
@@ -755,11 +745,8 @@ async function loadOverall() {
       try { allData[c.code] = await fetchCampus(c.code); }
       catch(e) { allData[c.code] = {rooms:[], summary:{}}; }
     }));
-    const { totalRemaining, bySection } = computeSpacesRemaining(allData);
     const { totalRemaining: totalSpaceRemaining, bySection: bySectionSpace } = computeSpaceRemaining(allData);
     el.innerHTML = buildOverall(allData)
-      + buildBurndownChart(totalRemaining)
-      + buildSpacesLeftChart(bySection, totalRemaining)
       + buildSpaceBurndownChart(totalSpaceRemaining)
       + buildSpaceCategoryChart(bySectionSpace, totalSpaceRemaining);
   } catch(e) {
