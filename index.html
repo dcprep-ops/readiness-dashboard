@@ -360,6 +360,22 @@ function buildOverall(allData) {
     return total ? { ok: Math.round(ok/total*100), minor: Math.round(minor/total*100), total, okCount: ok, needed: total - ok } : null;
   }
 
+  function networkSpacePcts() {
+    let ok = 0, minor = 0, total = 0;
+    CAMPUSES.forEach(c => {
+      const d = allData[c.code];
+      if (!d) return;
+      d.rooms.forEach(r => {
+        const cls = combinedSpaceStatus(r);
+        if (cls === 'dot-na') return;
+        total++;
+        if (cls === 'dot-ok')    ok++;
+        if (cls === 'dot-minor') minor++;
+      });
+    });
+    return total ? { ok: Math.round(ok/total*100), minor: Math.round(minor/total*100), total, okCount: ok, needed: total - ok } : null;
+  }
+
   const trackMeta = [
     {key:'SDO',  label:'Operations'},
     {key:'tech', label:'Tech'},
@@ -385,6 +401,20 @@ function buildOverall(allData) {
     </div>`;
   }).join('');
 
+  const spaceP = networkSpacePcts();
+  let spaceBarHtml = '';
+  if (spaceP) {
+    const spaceCombined = spaceP.ok + spaceP.minor;
+    const spaceOkSeg    = spaceP.ok    > 0 ? `<div class="seg-ok" style="width:${spaceP.ok}%"><span class="seg-label-ok">${spaceP.ok >= 8 ? spaceP.ok+'%' : ''}</span></div>` : '';
+    const spaceMinorSeg = spaceP.minor > 0 ? `<div class="seg-mn" style="width:${spaceP.minor}%"><span class="seg-label-mn">${spaceP.minor >= 8 ? spaceP.minor+'%' : ''}</span></div>` : '';
+    spaceBarHtml = `<div class="kpi-card" style="margin-bottom:14px">
+      <div class="kpi-name">Total Spaces Ready</div>
+      <div class="kpi-pct">${spaceCombined}<span class="kpi-pct-unit">%</span></div>
+      <div class="kpi-bar-track">${spaceOkSeg}${spaceMinorSeg}</div>
+      <div class="kpi-needed"><span class="kpi-needed-num">${spaceP.needed}</span> spaces need attention</div>
+    </div>`;
+  }
+
   const timestamps = CAMPUSES.map(c => allData[c.code] && allData[c.code].generated).filter(Boolean);
   const genStr = timestamps.length ? timestamps[0] : '';
 
@@ -395,9 +425,26 @@ function buildOverall(allData) {
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
       </div>
+      ${spaceBarHtml}
       <div class="kpi-list">${cardsHtml}</div>
       ${genStr ? `<div style="font-size:11px;color:var(--muted);margin-top:16px">Updated ${genStr}</div>` : ''}
     </div>`;
+}
+
+// A "space" is only Fully Ready when both tracks that apply to it are Fully
+// Ready. If one track is N/A for that space (e.g. Tech doesn't apply), the
+// other track alone decides. If both are N/A, the space itself is N/A.
+function combinedSpaceStatus(room) {
+  const sdoCls  = dotClass(room.SDO  ? room.SDO.assessment  : null);
+  const techCls = dotClass(room.tech ? room.tech.assessment : null);
+  const sdoNA  = sdoCls  === 'dot-na';
+  const techNA = techCls === 'dot-na';
+  if (sdoNA && techNA) return 'dot-na';
+  if (sdoNA)  return techCls;
+  if (techNA) return sdoCls;
+  if (sdoCls === 'dot-ok' && techCls === 'dot-ok') return 'dot-ok';
+  if (sdoCls === 'dot-bad' || techCls === 'dot-bad') return 'dot-bad';
+  return 'dot-minor'; // some progress on at least one track, neither fully ready nor bad
 }
 
 // ── Total Progress: burndown + spaces-by-category ──────────────────────────
@@ -550,6 +597,127 @@ function buildSpacesLeftChart(bySection, totalRemaining) {
   </div>`;
 }
 
+// ── Spaces (combined) versions of the two charts above ─────────────────────
+// Same structure as computeSpacesRemaining/buildBurndownChart/buildSpacesLeftChart,
+// but a room only counts as "remaining" here if it's not Fully Ready by the
+// combined-space definition (see combinedSpaceStatus) rather than per-track.
+function computeSpaceRemaining(allData) {
+  const bySection = {};
+  let totalRemaining = 0;
+  CAMPUSES.forEach(c => {
+    const d = allData[c.code];
+    if (!d || !d.rooms) return;
+    const cluster = CLUSTER_MAP[c.code];
+    d.rooms.forEach(r => {
+      const cls = combinedSpaceStatus(r);
+      if (cls === 'dot-na' || cls === 'dot-ok') return;
+      const sec = r.section || 'Other';
+      if (!bySection[sec]) bySection[sec] = {Anacostia:0, Benning:0, Edgewood:0};
+      bySection[sec][cluster]++;
+      totalRemaining++;
+    });
+  });
+  return { totalRemaining, bySection };
+}
+
+function buildSpaceBurndownChart(totalRemaining) {
+  if (!totalRemaining) {
+    return `<div class="progress-block">
+      <div class="progress-block-title">BURNDOWN — SPACES</div>
+      <div class="chart-headline"><span class="num">0</span><span class="lbl">spaces remaining — fully caught up!</span></div>
+    </div>`;
+  }
+  const totalDays  = countBusinessDays(START_DATE, FDOS_DATE);
+  const targetDay   = countBusinessDays(START_DATE, TARGET_DATE);
+  const todayDay    = 1;
+
+  const L = 40, R = 620, TOP = 40, BOT = 217;
+  const xStep = (R - L) / (totalDays - 1);
+  const xFor  = d => (L + (d - 1) * xStep).toFixed(1);
+  const yFor  = v => (BOT - (v / totalRemaining) * (BOT - TOP)).toFixed(1);
+
+  let idealPts = [];
+  for (let d = 1; d <= totalDays; d++) {
+    const v = d <= targetDay ? totalRemaining * (1 - (d - 1) / (targetDay - 1)) : 0;
+    idealPts.push(`${xFor(d)},${yFor(v)}`);
+  }
+
+  const todayX = xFor(todayDay), targetX = xFor(targetDay), fdosX = xFor(totalDays);
+  const todayY = yFor(totalRemaining);
+
+  return `<div class="progress-block">
+    <div class="progress-block-title">BURNDOWN — SPACES</div>
+    <div class="chart-headline"><span class="num">${totalRemaining}</span><span class="lbl">spaces remaining</span></div>
+    <div class="chart-legend">
+      <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#94a3b8"></span>Ideal pace</span>
+      <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:var(--blue)"></span>Actual</span>
+    </div>
+    <svg viewBox="0 0 680 232" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
+      <line x1="40" y1="40"  x2="620" y2="40"  stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="84"  x2="620" y2="84"  stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="128" x2="620" y2="128" stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="172" x2="620" y2="172" stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="217" x2="620" y2="217" stroke="#cbd5e1" stroke-width="1.5"/>
+
+      <text x="34" y="44"  font-size="10" fill="#94a3b8" text-anchor="end">${totalRemaining}</text>
+      <text x="34" y="221" font-size="10" fill="#94a3b8" text-anchor="end">0</text>
+
+      <line x1="${todayX}" y1="40" x2="${todayX}" y2="217" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <text x="${todayX}" y="34" font-size="12" fill="#475569" text-anchor="middle" font-weight="700">TODAY</text>
+
+      <line x1="${targetX}" y1="40" x2="${targetX}" y2="217" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <text x="${targetX}" y="14" font-size="12" fill="#64748b" text-anchor="middle" font-weight="700">TARGET FOR</text>
+      <text x="${targetX}" y="29" font-size="12" fill="#64748b" text-anchor="middle" font-weight="700">100% READINESS</text>
+
+      <line x1="${fdosX}" y1="40" x2="${fdosX}" y2="217" stroke="#E5A810" stroke-width="2"/>
+      <text x="${fdosX}" y="14" font-size="12" fill="#E5A810" text-anchor="middle" font-weight="700">FIRST DAY OF</text>
+      <text x="${fdosX}" y="29" font-size="12" fill="#E5A810" text-anchor="middle" font-weight="700">SCHOOL</text>
+
+      <polyline points="${idealPts.join(' ')}" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-dasharray="6,5"/>
+      <circle cx="${todayX}" cy="${todayY}" r="5" fill="#005E9E"/>
+
+      <text x="40" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Jul 30</text>
+      <text x="${targetX}" y="230" font-size="10" fill="#64748b" text-anchor="middle" font-weight="600">Aug 18</text>
+      <text x="${fdosX}" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Aug 24</text>
+    </svg>
+  </div>`;
+}
+
+function buildSpaceCategoryChart(bySection, totalRemaining) {
+  const sections = Object.entries(bySection)
+    .map(([name, counts]) => ({ name, counts, total: counts.Anacostia + counts.Benning + counts.Edgewood }))
+    .filter(s => s.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  if (!sections.length) return '';
+  const maxTotal = sections[0].total;
+
+  const rows = sections.map(s => {
+    const widthPct = (s.total / maxTotal * 100).toFixed(1);
+    const segs = ['Anacostia', 'Benning', 'Edgewood'].map(cl => {
+      const n = s.counts[cl];
+      if (!n) return '';
+      const segPct = (n / s.total * 100).toFixed(1);
+      return `<div class="cat-seg" style="width:${segPct}%;background:${CLUSTER_COLOR[cl]}">${n}</div>`;
+    }).join('');
+    return `<div class="cat-row">
+      <span class="cat-label">${s.name}</span>
+      <div class="cat-bar-track" style="flex:1 1 auto;max-width:${widthPct}%">${segs}</div>
+      <span class="cat-count">${s.total}</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="progress-block">
+    <div class="progress-block-title">SPACES LEFT, BY CATEGORY</div>
+    <div class="cat-legend">
+      <span class="cat-legend-item"><span class="cat-legend-swatch" style="background:var(--blue)"></span>Anacostia</span>
+      <span class="cat-legend-item"><span class="cat-legend-swatch" style="background:var(--gold)"></span>Benning</span>
+      <span class="cat-legend-item"><span class="cat-legend-swatch" style="background:var(--green)"></span>Edgewood</span>
+    </div>
+    ${rows}
+  </div>`;
+}
+
 // ── Data fetching ─────────────────────────────────────────────────────────────
 const cache = {};  // campus code → data
 
@@ -588,9 +756,12 @@ async function loadOverall() {
       catch(e) { allData[c.code] = {rooms:[], summary:{}}; }
     }));
     const { totalRemaining, bySection } = computeSpacesRemaining(allData);
+    const { totalRemaining: totalSpaceRemaining, bySection: bySectionSpace } = computeSpaceRemaining(allData);
     el.innerHTML = buildOverall(allData)
       + buildBurndownChart(totalRemaining)
-      + buildSpacesLeftChart(bySection, totalRemaining);
+      + buildSpacesLeftChart(bySection, totalRemaining)
+      + buildSpaceBurndownChart(totalSpaceRemaining)
+      + buildSpaceCategoryChart(bySectionSpace, totalSpaceRemaining);
   } catch(e) {
     el.innerHTML = '<div class="empty-msg" style="color:var(--red)">Error loading data.</div>';
   } finally {
