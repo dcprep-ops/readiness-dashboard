@@ -388,7 +388,6 @@ function buildOverall(allData) {
     const minorSeg = p.minor > 0 ? `<div class="seg-mn" style="width:${p.minor}%"><span class="seg-label-mn">${p.minor >= 8 ? p.minor+'%' : ''}</span></div>` : '';
     return `<div class="kpi-card">
       <div class="kpi-name">${t.label}</div>
-      <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
       <div class="kpi-bar-track">${okSeg}${minorSeg}</div>
     </div>`;
   }).join('');
@@ -411,11 +410,11 @@ function buildOverall(allData) {
 
   return `
     <div class="net-summary">
+      ${spaceBarHtml}
       <div class="bar-legend">
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
         <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
       </div>
-      ${spaceBarHtml}
       <div class="kpi-list">${cardsHtml}</div>
       ${genStr ? `<div style="font-size:11px;color:var(--muted);margin-top:16px">Updated ${genStr}</div>` : ''}
     </div>`;
@@ -430,11 +429,19 @@ function combinedSpaceStatus(room) {
   const sdoNA  = sdoCls  === 'dot-na';
   const techNA = techCls === 'dot-na';
   if (sdoNA && techNA) return 'dot-na';
-  if (sdoNA)  return techCls;
-  if (techNA) return sdoCls;
-  if (sdoCls === 'dot-ok' && techCls === 'dot-ok') return 'dot-ok';
-  if (sdoCls === 'dot-bad' || techCls === 'dot-bad') return 'dot-bad';
-  return 'dot-minor'; // some progress on at least one track, neither fully ready nor bad
+
+  // Only "ok" and "minor" are meaningful for the combined space metric —
+  // anything else (bad/pending/blank/not-assessed) just means this space
+  // isn't cleanly green or yellow yet, so it doesn't map to either.
+  function simplify(cls) { return (cls === 'dot-ok' || cls === 'dot-minor') ? cls : null; }
+
+  if (sdoNA)  return simplify(techCls) || 'dot-blank';
+  if (techNA) return simplify(sdoCls)  || 'dot-blank';
+
+  const a = simplify(sdoCls), b = simplify(techCls);
+  if (a === 'dot-ok' && b === 'dot-ok') return 'dot-ok';   // green/green
+  if (a && b) return 'dot-minor';                          // green/yellow or yellow/yellow
+  return 'dot-blank';                                      // anything involving bad/pending/not-assessed
 }
 
 // ── Total Progress: burndown + spaces-by-category ──────────────────────────
