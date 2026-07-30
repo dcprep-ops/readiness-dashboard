@@ -51,17 +51,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dot-pending {background:#378ADD;color:#fff}
 
 /* ── main ── */
-.main{max-width:1100px;margin:0 auto;padding:16px 20px 40px}
+.main{max-width:1100px;margin:0 auto;padding:16px 12px 40px}
+@media(min-width:480px){
+  .main{padding:16px 20px 40px}
+}
 .tab-panel{display:none}.tab-panel.active{display:block}
 .section-block{margin-bottom:10px}
-.section-hdr{font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 20px;margin:28px -20px 10px}
+.section-hdr{font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 12px;margin:28px -12px 10px}
 .section-block:first-child .section-hdr{margin-top:0}
+@media(min-width:480px){
+  .section-hdr{padding:8px 20px;margin:28px -20px 10px}
+}
 
 /* ── space table ── */
 .space-table{width:100%;border-collapse:collapse}
 .space-table th{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:6px 12px;border-bottom:0.5px solid var(--border);text-align:left}
 .space-table th.sc{text-align:center;width:62px;padding:6px 4px}
 .space-table td{padding:7px 12px;border-bottom:0.5px solid var(--border);font-size:13px;color:var(--text);vertical-align:middle}
+.space-table th:first-child, .space-table td:first-child{padding-left:0}
+.space-table th.sc:last-child, .space-table td.sc:last-child{padding-right:0}
 .space-table tr:last-child td{border-bottom:none}
 .space-table tr:hover td{background:#f8fbff}
 .space-table td.sc{text-align:center;vertical-align:middle;padding:7px 4px}
@@ -105,6 +113,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .seg-label-ok{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
 .seg-label-pending{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
 .seg-label-mn{font-size:12px;font-weight:600;color:#78350f;white-space:nowrap;overflow:hidden}
+
+/* Total Progress: burndown + spaces-by-category */
+.progress-block{margin-top:32px}
+.progress-block-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.chart-legend{display:flex;gap:18px;margin-bottom:14px;flex-wrap:wrap}
+.chart-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.chart-legend-swatch{width:14px;height:3px;border-radius:2px}
+.chart-headline{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+.chart-headline .num{font-size:28px;font-weight:700;color:var(--text)}
+.chart-headline .lbl{font-size:13px;color:var(--muted)}
+.cat-legend{display:flex;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.cat-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.cat-legend-swatch{width:10px;height:10px;border-radius:2px}
+.cat-row{display:flex;align-items:center;gap:12px;padding:9px 0}
+.cat-label{width:170px;flex-shrink:0;font-size:13px;color:var(--text);font-weight:500}
+.cat-bar-track{flex:1;height:20px;background:var(--lt);border-radius:4px;overflow:hidden;display:flex}
+.cat-seg{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700}
+.cat-count{width:34px;flex-shrink:0;text-align:right;font-size:13px;font-weight:600;color:var(--blue)}
 .kpi-na{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
 .kpi-na-name{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .kpi-na-note{font-size:13px;color:var(--muted)}
@@ -376,6 +402,152 @@ function buildOverall(allData) {
     </div>`;
 }
 
+// ── Total Progress: burndown + spaces-by-category ──────────────────────────
+// NOTE: the Apps Script only returns each room's *current* status, not a
+// history of what it was on past dates — there's no persisted daily
+// snapshot to reconstruct a real trend line from. The "Actual" line below
+// can only ever plot a single true data point: today. It'll only become a
+// real multi-day trend once something (e.g. a daily Apps Script trigger)
+// starts logging "date, total remaining" to a tracking tab. Flagged in the
+// UI itself via the dashed "builds up day by day" note.
+const CLUSTER_MAP = {AEC:'Anacostia', AMC:'Anacostia', BEC:'Benning', BMC:'Benning', EEC:'Edgewood', EMC:'Edgewood'};
+const CLUSTER_COLOR = {Anacostia:'var(--blue)', Benning:'var(--gold)', Edgewood:'var(--green)'};
+const START_DATE  = new Date(2026, 6, 30);  // Jul 30, 2026
+const TARGET_DATE = new Date(2026, 7, 18);  // Aug 18, 2026
+const FDOS_DATE   = new Date(2026, 7, 24);  // Aug 24, 2026 — First Day of School
+
+function countBusinessDays(start, end) {
+  let count = 0;
+  const d = new Date(start);
+  while (d <= end) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
+// Returns { totalRemaining, bySection: { sectionName: {Anacostia,Benning,Edgewood} } }
+// "Remaining" = the Operations (SDO) signoff isn't yet confirmed Fully ready —
+// matches the OSL/SDO framework where SDO's confirmation is what closes a room out.
+function computeSpacesRemaining(allData) {
+  const bySection = {};
+  let totalRemaining = 0;
+  CAMPUSES.forEach(c => {
+    const d = allData[c.code];
+    if (!d || !d.rooms) return;
+    const cluster = CLUSTER_MAP[c.code];
+    d.rooms.forEach(r => {
+      const cls = dotClass(r.SDO ? r.SDO.assessment : null);
+      if (cls === 'dot-na' || cls === 'dot-ok') return;
+      const sec = r.section || 'Other';
+      if (!bySection[sec]) bySection[sec] = {Anacostia:0, Benning:0, Edgewood:0};
+      bySection[sec][cluster]++;
+      totalRemaining++;
+    });
+  });
+  return { totalRemaining, bySection };
+}
+
+function buildBurndownChart(totalRemaining) {
+  if (!totalRemaining) {
+    return `<div class="progress-block">
+      <div class="progress-block-title">Burndown — Business Days to Target</div>
+      <div class="chart-headline"><span class="num">0</span><span class="lbl">spaces remaining — fully caught up!</span></div>
+    </div>`;
+  }
+  const totalDays  = countBusinessDays(START_DATE, FDOS_DATE);
+  const targetDay   = countBusinessDays(START_DATE, TARGET_DATE);
+  const todayDay    = 1; // dashboard always computes "remaining" live, as of today
+
+  const L = 40, R = 620, TOP = 22, BOT = 217;
+  const xStep = (R - L) / (totalDays - 1);
+  const xFor  = d => (L + (d - 1) * xStep).toFixed(1);
+  const yFor  = v => (BOT - (v / totalRemaining) * (BOT - TOP)).toFixed(1);
+
+  let idealPts = [];
+  for (let d = 1; d <= totalDays; d++) {
+    const v = d <= targetDay ? totalRemaining * (1 - (d - 1) / (targetDay - 1)) : 0;
+    idealPts.push(`${xFor(d)},${yFor(v)}`);
+  }
+
+  const todayX = xFor(todayDay), targetX = xFor(targetDay), fdosX = xFor(totalDays);
+  const todayY = yFor(totalRemaining);
+
+  return `<div class="progress-block">
+    <div class="progress-block-title">Burndown — Business Days to Target</div>
+    <div class="chart-headline"><span class="num">${totalRemaining}</span><span class="lbl">spaces remaining</span></div>
+    <div class="chart-legend">
+      <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#94a3b8"></span>Ideal pace</span>
+      <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:var(--blue)"></span>Actual</span>
+    </div>
+    <svg viewBox="0 0 680 232" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
+      <line x1="40" y1="22"  x2="620" y2="22"  stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="72"  x2="620" y2="72"  stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="122" x2="620" y2="122" stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="172" x2="620" y2="172" stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="217" x2="620" y2="217" stroke="#cbd5e1" stroke-width="1.5"/>
+
+      <text x="34" y="26"  font-size="10" fill="#94a3b8" text-anchor="end">${totalRemaining}</text>
+      <text x="34" y="221" font-size="10" fill="#94a3b8" text-anchor="end">0</text>
+
+      <line x1="${todayX}" y1="22" x2="${todayX}" y2="217" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <text x="${todayX}" y="18" font-size="10" fill="#475569" text-anchor="middle" font-weight="700">TODAY</text>
+
+      <line x1="${targetX}" y1="22" x2="${targetX}" y2="217" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <text x="${targetX}" y="15" font-size="10" fill="#64748b" text-anchor="middle" font-weight="700">TARGET FOR</text>
+      <text x="${targetX}" y="26" font-size="10" fill="#64748b" text-anchor="middle" font-weight="700">100% READINESS</text>
+
+      <line x1="${fdosX}" y1="22" x2="${fdosX}" y2="217" stroke="#E5A810" stroke-width="2"/>
+      <text x="${fdosX}" y="15" font-size="10" fill="#E5A810" text-anchor="middle" font-weight="700">FIRST DAY OF</text>
+      <text x="${fdosX}" y="26" font-size="10" fill="#E5A810" text-anchor="middle" font-weight="700">SCHOOL</text>
+
+      <polyline points="${idealPts.join(' ')}" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-dasharray="6,5"/>
+      <circle cx="${todayX}" cy="${todayY}" r="5" fill="#005E9E"/>
+
+      <text x="40" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Jul 30</text>
+      <text x="${targetX}" y="230" font-size="10" fill="#64748b" text-anchor="middle" font-weight="600">Aug 18</text>
+      <text x="${fdosX}" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Aug 24</text>
+    </svg>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">The Actual line builds up day by day from today — there's no history to plot before now.</div>
+  </div>`;
+}
+
+function buildSpacesLeftChart(bySection, totalRemaining) {
+  const sections = Object.entries(bySection)
+    .map(([name, counts]) => ({ name, counts, total: counts.Anacostia + counts.Benning + counts.Edgewood }))
+    .filter(s => s.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  if (!sections.length) return '';
+  const maxTotal = sections[0].total;
+
+  const rows = sections.map(s => {
+    const widthPct = (s.total / maxTotal * 100).toFixed(1);
+    const segs = ['Anacostia', 'Benning', 'Edgewood'].map(cl => {
+      const n = s.counts[cl];
+      if (!n) return '';
+      const segPct = (n / s.total * 100).toFixed(1);
+      return `<div class="cat-seg" style="width:${segPct}%;background:${CLUSTER_COLOR[cl]}">${n}</div>`;
+    }).join('');
+    return `<div class="cat-row">
+      <span class="cat-label">${s.name}</span>
+      <div class="cat-bar-track" style="flex:0 0 ${widthPct}%">${segs}</div>
+      <span class="cat-count">${s.total}</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="progress-block">
+    <div class="progress-block-title">Spaces Left to Clear, by Category</div>
+    <div class="cat-legend">
+      <span class="cat-legend-item"><span class="cat-legend-swatch" style="background:var(--blue)"></span>Anacostia</span>
+      <span class="cat-legend-item"><span class="cat-legend-swatch" style="background:var(--gold)"></span>Benning</span>
+      <span class="cat-legend-item"><span class="cat-legend-swatch" style="background:var(--green)"></span>Edgewood</span>
+    </div>
+    ${rows}
+  </div>`;
+}
+
 // ── Data fetching ─────────────────────────────────────────────────────────────
 const cache = {};  // campus code → data
 
@@ -413,7 +585,10 @@ async function loadOverall() {
       try { allData[c.code] = await fetchCampus(c.code); }
       catch(e) { allData[c.code] = {rooms:[], summary:{}}; }
     }));
-    el.innerHTML = buildOverall(allData);
+    const { totalRemaining, bySection } = computeSpacesRemaining(allData);
+    el.innerHTML = buildOverall(allData)
+      + buildBurndownChart(totalRemaining)
+      + buildSpacesLeftChart(bySection, totalRemaining);
   } catch(e) {
     el.innerHTML = '<div class="empty-msg" style="color:var(--red)">Error loading data.</div>';
   } finally {
