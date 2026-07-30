@@ -51,17 +51,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dot-pending {background:#378ADD;color:#fff}
 
 /* ── main ── */
-.main{max-width:1100px;margin:0 auto;padding:16px 12px 40px}
-@media(min-width:480px){
-  .main{padding:16px 20px 40px}
-}
+.main{max-width:1100px;margin:0 auto;padding:16px 20px 40px}
 .tab-panel{display:none}.tab-panel.active{display:block}
 .section-block{margin-bottom:10px}
-.section-hdr{font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 12px;margin:28px -12px 10px}
+.section-hdr{font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 20px;margin:28px -20px 10px}
 .section-block:first-child .section-hdr{margin-top:0}
-@media(min-width:480px){
-  .section-hdr{padding:8px 20px;margin:28px -20px 10px}
-}
 
 /* ── space table ── */
 .space-table{width:100%;border-collapse:collapse}
@@ -97,7 +91,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* ── overall tab — vertical KPI cards ── */
 .net-summary{padding:20px 0 16px;margin-bottom:24px}
-.net-summary-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.net-summary-title{font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 20px;margin:0 -20px 14px}
 .bar-legend{display:flex;gap:16px;margin-bottom:16px}
 .bar-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
 .bar-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
@@ -116,7 +110,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* Total Progress: burndown + spaces-by-category */
 .progress-block{margin-top:32px}
-.progress-block-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.progress-block-title{font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 20px;margin:0 -20px 14px}
 .chart-legend{display:flex;gap:18px;margin-bottom:14px;flex-wrap:wrap}
 .chart-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .chart-legend-swatch{width:14px;height:3px;border-radius:2px}
@@ -126,8 +120,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cat-legend{display:flex;gap:14px;margin-bottom:16px;flex-wrap:wrap}
 .cat-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
 .cat-legend-swatch{width:10px;height:10px;border-radius:2px}
-.cat-row{display:flex;align-items:center;gap:12px;padding:9px 0}
-.cat-label{width:170px;flex-shrink:0;font-size:13px;color:var(--text);font-weight:500}
+.cat-row{display:flex;align-items:center;gap:8px;padding:9px 0}
+.cat-label{width:90px;flex-shrink:0;font-size:12px;color:var(--text);font-weight:500;line-height:1.3}
+@media(min-width:480px){
+  .cat-row{gap:12px}
+  .cat-label{width:170px;font-size:13px}
+}
 .cat-bar-track{flex:1;height:20px;background:var(--lt);border-radius:4px;overflow:hidden;display:flex}
 .cat-seg{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700}
 .cat-count{width:34px;flex-shrink:0;text-align:right;font-size:13px;font-weight:600;color:var(--blue)}
@@ -460,7 +458,7 @@ function buildBurndownChart(totalRemaining) {
   const targetDay   = countBusinessDays(START_DATE, TARGET_DATE);
   const todayDay    = 1; // dashboard always computes "remaining" live, as of today
 
-  const L = 40, R = 620, TOP = 22, BOT = 217;
+  const L = 40, R = 620, TOP = 40, BOT = 217;
   const xStep = (R - L) / (totalDays - 1);
   const xFor  = d => (L + (d - 1) * xStep).toFixed(1);
   const yFor  = v => (BOT - (v / totalRemaining) * (BOT - TOP)).toFixed(1);
@@ -482,25 +480,25 @@ function buildBurndownChart(totalRemaining) {
       <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:var(--blue)"></span>Actual</span>
     </div>
     <svg viewBox="0 0 680 232" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
-      <line x1="40" y1="22"  x2="620" y2="22"  stroke="#f1f5f9" stroke-width="1"/>
-      <line x1="40" y1="72"  x2="620" y2="72"  stroke="#f1f5f9" stroke-width="1"/>
-      <line x1="40" y1="122" x2="620" y2="122" stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="40"  x2="620" y2="40"  stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="84"  x2="620" y2="84"  stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="40" y1="128" x2="620" y2="128" stroke="#f1f5f9" stroke-width="1"/>
       <line x1="40" y1="172" x2="620" y2="172" stroke="#f1f5f9" stroke-width="1"/>
       <line x1="40" y1="217" x2="620" y2="217" stroke="#cbd5e1" stroke-width="1.5"/>
 
-      <text x="34" y="26"  font-size="10" fill="#94a3b8" text-anchor="end">${totalRemaining}</text>
+      <text x="34" y="44"  font-size="10" fill="#94a3b8" text-anchor="end">${totalRemaining}</text>
       <text x="34" y="221" font-size="10" fill="#94a3b8" text-anchor="end">0</text>
 
-      <line x1="${todayX}" y1="22" x2="${todayX}" y2="217" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
-      <text x="${todayX}" y="18" font-size="10" fill="#475569" text-anchor="middle" font-weight="700">TODAY</text>
+      <line x1="${todayX}" y1="40" x2="${todayX}" y2="217" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <text x="${todayX}" y="34" font-size="12" fill="#475569" text-anchor="middle" font-weight="700">TODAY</text>
 
-      <line x1="${targetX}" y1="22" x2="${targetX}" y2="217" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,4"/>
-      <text x="${targetX}" y="15" font-size="10" fill="#64748b" text-anchor="middle" font-weight="700">TARGET FOR</text>
-      <text x="${targetX}" y="26" font-size="10" fill="#64748b" text-anchor="middle" font-weight="700">100% READINESS</text>
+      <line x1="${targetX}" y1="40" x2="${targetX}" y2="217" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <text x="${targetX}" y="14" font-size="12" fill="#64748b" text-anchor="middle" font-weight="700">TARGET FOR</text>
+      <text x="${targetX}" y="29" font-size="12" fill="#64748b" text-anchor="middle" font-weight="700">100% READINESS</text>
 
-      <line x1="${fdosX}" y1="22" x2="${fdosX}" y2="217" stroke="#E5A810" stroke-width="2"/>
-      <text x="${fdosX}" y="15" font-size="10" fill="#E5A810" text-anchor="middle" font-weight="700">FIRST DAY OF</text>
-      <text x="${fdosX}" y="26" font-size="10" fill="#E5A810" text-anchor="middle" font-weight="700">SCHOOL</text>
+      <line x1="${fdosX}" y1="40" x2="${fdosX}" y2="217" stroke="#E5A810" stroke-width="2"/>
+      <text x="${fdosX}" y="14" font-size="12" fill="#E5A810" text-anchor="middle" font-weight="700">FIRST DAY OF</text>
+      <text x="${fdosX}" y="29" font-size="12" fill="#E5A810" text-anchor="middle" font-weight="700">SCHOOL</text>
 
       <polyline points="${idealPts.join(' ')}" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-dasharray="6,5"/>
       <circle cx="${todayX}" cy="${todayY}" r="5" fill="#005E9E"/>
@@ -509,7 +507,6 @@ function buildBurndownChart(totalRemaining) {
       <text x="${targetX}" y="230" font-size="10" fill="#64748b" text-anchor="middle" font-weight="600">Aug 18</text>
       <text x="${fdosX}" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Aug 24</text>
     </svg>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px">The Actual line builds up day by day from today — there's no history to plot before now.</div>
   </div>`;
 }
 
@@ -532,7 +529,7 @@ function buildSpacesLeftChart(bySection, totalRemaining) {
     }).join('');
     return `<div class="cat-row">
       <span class="cat-label">${s.name}</span>
-      <div class="cat-bar-track" style="flex:0 0 ${widthPct}%">${segs}</div>
+      <div class="cat-bar-track" style="flex:1 1 auto;max-width:${widthPct}%">${segs}</div>
       <span class="cat-count">${s.total}</span>
     </div>`;
   }).join('');
