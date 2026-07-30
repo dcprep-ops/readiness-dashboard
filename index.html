@@ -97,6 +97,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .bar-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .kpi-list{display:flex;flex-direction:column;gap:14px}
 .kpi-card{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
+.signoffs-box{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-top:14px}
+.signoffs-box-title{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.signoff-row{display:flex;align-items:center;gap:12px;padding:7px 0}
+.signoff-row + .signoff-row{border-top:0.5px solid var(--border)}
+.signoff-label{width:38px;flex-shrink:0;font-size:13px;font-weight:600;color:var(--text)}
+.signoff-bar-track{flex:1;height:22px;background:rgba(0,0,0,.06);border-radius:6px;overflow:hidden;display:flex}
 .kpi-name{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .kpi-pct{font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:12px}
 .kpi-pct-unit{font-size:16px;color:var(--muted);font-weight:400}
@@ -104,6 +110,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .kpi-needed{font-size:12px;color:var(--text);font-weight:400;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border)}
 .kpi-needed-num{font-weight:400;color:var(--text)}
 .seg-ok{background:var(--green);height:100%;display:flex;align-items:center;padding:0 10px}
+.seg-gray{background:#94a3b8;height:100%;display:flex;align-items:center;padding:0 10px}
 .seg-pending{background:#378ADD;height:100%;display:flex;align-items:center;padding:0 8px}
 .seg-mn{background:var(--yellow);height:100%;display:flex;align-items:center;padding:0 8px}
 .seg-label-ok{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
@@ -370,25 +377,24 @@ function buildOverall(allData) {
   }
 
   const trackMeta = [
-    {key:'SDO',  label:'Operations Signoffs'},
-    {key:'tech', label:'Tech Signoffs'},
+    {key:'SDO',  label:'Ops'},
+    {key:'tech', label:'Tech'},
   ];
 
   const cardsHtml = trackMeta.map(t => {
     const p = networkPcts(t.key);
     if (!p) {
-      return `<div class="kpi-na">
-        <div class="kpi-na-name">${t.label}</div>
-        <div class="kpi-na-note">Not yet assessed</div>
+      return `<div class="signoff-row">
+        <span class="signoff-label">${t.label}</span>
+        <div class="signoff-bar-track"></div>
+        <span style="font-size:11px;color:var(--muted)">Not yet assessed</span>
       </div>`;
     }
     const combined = p.ok + p.minor;
-    // Only render segments when > 0 to avoid hairline color bleed
-    const okSeg    = p.ok    > 0 ? `<div class="seg-ok" style="width:${p.ok}%"><span class="seg-label-ok">${p.ok >= 8 ? p.ok+'%' : ''}</span></div>` : '';
-    const minorSeg = p.minor > 0 ? `<div class="seg-mn" style="width:${p.minor}%"><span class="seg-label-mn">${p.minor >= 8 ? p.minor+'%' : ''}</span></div>` : '';
-    return `<div class="kpi-card">
-      <div class="kpi-name">${t.label}</div>
-      <div class="kpi-bar-track">${okSeg}${minorSeg}</div>
+    const graySeg = combined > 0 ? `<div class="seg-gray" style="width:${combined}%"><span class="seg-label-ok">${combined >= 8 ? combined+'%' : ''}</span></div>` : '';
+    return `<div class="signoff-row">
+      <span class="signoff-label">${t.label}</span>
+      <div class="signoff-bar-track">${graySeg}</div>
     </div>`;
   }).join('');
 
@@ -398,10 +404,14 @@ function buildOverall(allData) {
     const spaceCombined = spaceP.ok + spaceP.minor;
     const spaceOkSeg    = spaceP.ok    > 0 ? `<div class="seg-ok" style="width:${spaceP.ok}%"><span class="seg-label-ok">${spaceP.ok >= 8 ? spaceP.ok+'%' : ''}</span></div>` : '';
     const spaceMinorSeg = spaceP.minor > 0 ? `<div class="seg-mn" style="width:${spaceP.minor}%"><span class="seg-label-mn">${spaceP.minor >= 8 ? spaceP.minor+'%' : ''}</span></div>` : '';
-    spaceBarHtml = `<div class="kpi-card" style="margin-bottom:14px">
+    spaceBarHtml = `<div class="kpi-card">
       <div class="kpi-name">Total Spaces Ready</div>
       <div class="kpi-pct">${spaceCombined}<span class="kpi-pct-unit">%</span></div>
       <div class="kpi-bar-track">${spaceOkSeg}${spaceMinorSeg}</div>
+      <div class="bar-legend">
+        <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
+        <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
+      </div>
     </div>`;
   }
 
@@ -411,11 +421,10 @@ function buildOverall(allData) {
   return `
     <div class="net-summary">
       ${spaceBarHtml}
-      <div class="bar-legend">
-        <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
-        <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
+      <div class="signoffs-box">
+        <div class="signoffs-box-title">Signoffs</div>
+        ${cardsHtml}
       </div>
-      <div class="kpi-list">${cardsHtml}</div>
       ${genStr ? `<div style="font-size:11px;color:var(--muted);margin-top:16px">Updated ${genStr}</div>` : ''}
     </div>`;
 }
