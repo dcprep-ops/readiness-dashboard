@@ -433,9 +433,13 @@ function buildOverall(allData) {
 // A "space" is only Fully Ready when both tracks that apply to it are Fully
 // Ready. If one track is N/A for that space (e.g. Tech doesn't apply), the
 // other track alone decides. If both are N/A, the space itself is N/A.
-function combinedSpaceStatus(room) {
-  const sdoCls  = dotClass(room.SDO  ? room.SDO.assessment  : null);
-  const techCls = dotClass(room.tech ? room.tech.assessment : null);
+// Core combined-status rule, operating on raw assessment strings rather than
+// a room object — reusable both for "today" (via combinedSpaceStatus below)
+// and for historical reconstruction, where we only have a raw SDO assessment
+// string as of some past date (see buildHistoricalRemainingSeries).
+function combinedStatusFromRaw(sdoAssessment, techAssessment) {
+  const sdoCls  = dotClass(sdoAssessment);
+  const techCls = dotClass(techAssessment);
   const sdoNA  = sdoCls  === 'dot-na';
   const techNA = techCls === 'dot-na';
   if (sdoNA && techNA) return 'dot-na';
@@ -452,6 +456,13 @@ function combinedSpaceStatus(room) {
   if (a === 'dot-ok' && b === 'dot-ok') return 'dot-ok';   // green/green
   if (a && b) return 'dot-minor';                          // green/yellow or yellow/yellow
   return 'dot-blank';                                      // anything involving bad/pending/not-assessed
+}
+
+function combinedSpaceStatus(room) {
+  return combinedStatusFromRaw(
+    room.SDO  ? room.SDO.assessment  : null,
+    room.tech ? room.tech.assessment : null
+  );
 }
 
 // ── Total Progress: burndown + spaces-by-category ──────────────────────────
@@ -477,6 +488,99 @@ function countBusinessDays(start, end) {
     d.setDate(d.getDate() + 1);
   }
   return count;
+}
+
+// Inverse of countBusinessDays: given a 1-indexed business-day number,
+// returns the actual calendar Date it falls on.
+function businessDayToDate(start, dayIndex) {
+  let count = 0;
+  const d = new Date(start);
+  while (true) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) {
+      count++;
+      if (count === dayIndex) return new Date(d);
+    }
+    d.setDate(d.getDate() + 1);
+  }
+}
+
+async function fetchReadinessHistory() {
+  const res = await fetch(`${SCRIPT_URL}?view=readinessHistory`);
+  return res.json();
+}
+
+async function fetchDailySnapshots() {
+  const res = await fetch(`${SCRIPT_URL}?view=dailySnapshots`);
+  return res.json();
+}
+
+// Prefers a real logged snapshot for any day that has one (accurate for
+// both Ops and Tech, as they actually stood that day) — falling back to the
+// Ops-only reconstruction for earlier days before snapshots started.
+function mergeWithSnapshots(reconstructedSeries, snapshotRows) {
+  const snapshotByDay = {};
+  (snapshotRows || []).forEach(s => {
+    const d = new Date(s.ts);
+    d.setHours(0,0,0,0);
+    if (d < START_DATE) return;
+    const day = countBusinessDays(START_DATE, d);
+    snapshotByDay[day] = s.totalRemaining;
+  });
+  return reconstructedSeries.map(p => ({
+    day: p.day,
+    totalRemaining: snapshotByDay.hasOwnProperty(p.day) ? snapshotByDay[p.day] : p.totalRemaining
+  }));
+}
+
+// Reconstructs "total spaces remaining" for every business day from July 30
+// through today, using each room's real historical Ops submission as of
+// that day (from the raw Ops Readiness Log) paired with its CURRENT Tech
+// status. Tech has no submission history at all — see getReadinessHistory's
+// notes in the Apps Script — so this is the Ops trend told honestly, not a
+// true historical Tech trend. Returns [{day, totalRemaining}, ...].
+function buildHistoricalRemainingSeries(allData, historyRows) {
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const lastDay = now < START_DATE ? 1 : countBusinessDays(START_DATE, now);
+
+  const byKey = {};
+  historyRows.forEach(r => {
+    const key = r.campus + '|' + r.space;
+    if (!byKey[key]) byKey[key] = [];
+    byKey[key].push({ ts: r.ts, assessment: r.assessment });
+  });
+  Object.keys(byKey).forEach(k => byKey[k].sort((a,b) => a.ts - b.ts));
+
+  const allRooms = [];
+  CAMPUSES.forEach(c => {
+    const d = allData[c.code];
+    if (!d || !d.rooms) return;
+    d.rooms.forEach(r => {
+      allRooms.push({
+        key: c.code + '|' + r.space,
+        techAssessment: r.tech ? r.tech.assessment : null
+      });
+    });
+  });
+
+  const series = [];
+  for (let day = 1; day <= lastDay; day++) {
+    const cutoff = businessDayToDate(START_DATE, day).getTime() + 24*60*60*1000 - 1; // end of that calendar day
+    let remaining = 0;
+    allRooms.forEach(room => {
+      const subs = byKey[room.key] || [];
+      let latest = null;
+      for (let i = subs.length - 1; i >= 0; i--) {
+        if (subs[i].ts <= cutoff) { latest = subs[i]; break; }
+      }
+      const cls = combinedStatusFromRaw(latest ? latest.assessment : null, room.techAssessment);
+      if (cls === 'dot-na' || cls === 'dot-ok') return;
+      remaining++;
+    });
+    series.push({ day, totalRemaining: remaining });
+  }
+  return series;
 }
 
 // Returns { totalRemaining, bySection: { sectionName: {Anacostia,Benning,Edgewood} } }
@@ -627,42 +731,46 @@ function computeSpaceRemaining(allData) {
   return { totalRemaining, bySection };
 }
 
-function buildSpaceBurndownChart(totalRemaining) {
+function buildSpaceBurndownChart(historicalSeries) {
+  if (!historicalSeries || !historicalSeries.length) {
+    return `<div class="progress-block">
+      <div class="progress-block-title">BURNDOWN</div>
+      <div class="chart-headline"><span class="num">—</span><span class="lbl">no data yet</span></div>
+    </div>`;
+  }
+  const totalRemaining = historicalSeries[historicalSeries.length - 1].totalRemaining;
   if (!totalRemaining) {
     return `<div class="progress-block">
       <div class="progress-block-title">BURNDOWN</div>
       <div class="chart-headline"><span class="num">0</span><span class="lbl">spaces remaining — fully caught up!</span></div>
     </div>`;
   }
-  const totalDays  = countBusinessDays(START_DATE, FDOS_DATE);
-  const targetDay   = countBusinessDays(START_DATE, TARGET_DATE);
-  const now = new Date();
-  now.setHours(0,0,0,0);
-  const todayDay = now < START_DATE ? 1 : Math.min(totalDays, countBusinessDays(START_DATE, now));
+
+  const totalDays = countBusinessDays(START_DATE, FDOS_DATE);
+  const targetDay  = countBusinessDays(START_DATE, TARGET_DATE);
+  const todayDay   = historicalSeries.length;
+  const startTotal = historicalSeries[0].totalRemaining;
+  const yMax = Math.max(...historicalSeries.map(p => p.totalRemaining), 1);
 
   const L = 40, R = 620, TOP = 40, BOT = 217;
   const xStep = (R - L) / (totalDays - 1);
   const xFor  = d => (L + (d - 1) * xStep).toFixed(1);
-  const yFor  = v => (BOT - (v / totalRemaining) * (BOT - TOP)).toFixed(1);
+  const yFor  = v => (BOT - (v / yMax) * (BOT - TOP)).toFixed(1);
 
-  // We only have one real data point — today's live count. Rather than
-  // falsely projecting the ideal-pace line back to day 1 using today's
-  // number (which made the "Actual" dot mathematically pinned to the top
-  // gridline no matter what day it is, since it reused the same value as
-  // the y-axis's own scale), the ideal line is drawn forward FROM today:
-  // "at this pace, starting now, you would hit zero by the target date."
-  const idealEnd = Math.max(targetDay, todayDay + 1);
+  // Ideal pace: straight line from day 1's real starting total down to zero by target day
   let idealPts = [];
-  for (let d = todayDay; d <= totalDays; d++) {
-    const v = d <= targetDay
-      ? totalRemaining * (1 - (d - todayDay) / (idealEnd - todayDay))
+  for (let d = 1; d <= totalDays; d++) {
+    const v = (d <= targetDay && targetDay > 1)
+      ? startTotal * (1 - (d - 1) / (targetDay - 1))
       : 0;
     idealPts.push(`${xFor(d)},${yFor(v)}`);
   }
 
+  // Actual: a real reconstructed point for every business day since Jul 30
+  const actualPts = historicalSeries.map(p => `${xFor(p.day)},${yFor(p.totalRemaining)}`);
+
   const todayX = xFor(todayDay), targetX = xFor(targetDay), fdosX = xFor(totalDays);
   const todayY = yFor(totalRemaining);
-
 
   return `<div class="progress-block">
     <div class="progress-block-title">BURNDOWN</div>
@@ -678,7 +786,7 @@ function buildSpaceBurndownChart(totalRemaining) {
       <line x1="40" y1="172" x2="620" y2="172" stroke="#f1f5f9" stroke-width="1"/>
       <line x1="40" y1="217" x2="620" y2="217" stroke="#cbd5e1" stroke-width="1.5"/>
 
-      <text x="34" y="44"  font-size="10" fill="#94a3b8" text-anchor="end">${totalRemaining}</text>
+      <text x="34" y="44"  font-size="10" fill="#94a3b8" text-anchor="end">${yMax}</text>
       <text x="34" y="221" font-size="10" fill="#94a3b8" text-anchor="end">0</text>
 
       <line x1="${todayX}" y1="40" x2="${todayX}" y2="217" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
@@ -693,6 +801,7 @@ function buildSpaceBurndownChart(totalRemaining) {
       <text x="${fdosX}" y="29" font-size="12" fill="#E5A810" text-anchor="middle" font-weight="700">SCHOOL</text>
 
       <polyline points="${idealPts.join(' ')}" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-dasharray="6,5"/>
+      <polyline points="${actualPts.join(' ')}" fill="none" stroke="#005E9E" stroke-width="3"/>
       <circle cx="${todayX}" cy="${todayY}" r="5" fill="#005E9E"/>
 
       <text x="40" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Jul 30</text>
@@ -775,8 +884,14 @@ async function loadOverall() {
       catch(e) { allData[c.code] = {rooms:[], summary:{}}; }
     }));
     const { totalRemaining: totalSpaceRemaining, bySection: bySectionSpace } = computeSpaceRemaining(allData);
+    let historicalSeries = [];
+    try {
+      const [historyData, snapshotData] = await Promise.all([fetchReadinessHistory(), fetchDailySnapshots()]);
+      const reconstructed = buildHistoricalRemainingSeries(allData, historyData.rows || []);
+      historicalSeries = mergeWithSnapshots(reconstructed, snapshotData.rows || []);
+    } catch(e) { historicalSeries = []; }
     el.innerHTML = buildOverall(allData)
-      + buildSpaceBurndownChart(totalSpaceRemaining)
+      + buildSpaceBurndownChart(historicalSeries)
       + buildSpaceCategoryChart(bySectionSpace, totalSpaceRemaining);
   } catch(e) {
     el.innerHTML = '<div class="empty-msg" style="color:var(--red)">Error loading data.</div>';
