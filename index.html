@@ -92,7 +92,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ── overall tab — vertical KPI cards ── */
 .net-summary{padding:20px 0 16px;margin-bottom:24px}
 .net-summary-title{font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 20px;margin:0 -20px 14px}
-.bar-legend{display:flex;gap:16px;margin-bottom:16px}
+.bar-legend{display:flex;gap:16px;margin-top:14px;margin-bottom:16px}
 .bar-legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
 .bar-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .kpi-list{display:flex;flex-direction:column;gap:14px}
@@ -135,7 +135,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .cat-row{gap:12px}
   .cat-label{width:170px;font-size:13px}
 }
-.cat-bar-track{flex:1;height:20px;background:var(--lt);border-radius:4px;overflow:hidden;display:flex}
+.cat-bar-outer{flex:1;min-width:0}
+.cat-bar-track{height:20px;background:var(--lt);border-radius:4px;overflow:hidden;display:flex}
 .cat-seg{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700}
 .cat-count{width:34px;flex-shrink:0;text-align:right;font-size:13px;font-weight:600;color:var(--blue)}
 .kpi-na{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
@@ -587,7 +588,7 @@ function buildSpacesLeftChart(bySection, totalRemaining) {
     }).join('');
     return `<div class="cat-row">
       <span class="cat-label">${s.name}</span>
-      <div class="cat-bar-track" style="flex:1 1 auto;max-width:${widthPct}%">${segs}</div>
+      <div class="cat-bar-outer"><div class="cat-bar-track" style="width:${widthPct}%">${segs}</div></div>
       <span class="cat-count">${s.total}</span>
     </div>`;
   }).join('');
@@ -644,14 +645,24 @@ function buildSpaceBurndownChart(totalRemaining) {
   const xFor  = d => (L + (d - 1) * xStep).toFixed(1);
   const yFor  = v => (BOT - (v / totalRemaining) * (BOT - TOP)).toFixed(1);
 
+  // We only have one real data point — today's live count. Rather than
+  // falsely projecting the ideal-pace line back to day 1 using today's
+  // number (which made the "Actual" dot mathematically pinned to the top
+  // gridline no matter what day it is, since it reused the same value as
+  // the y-axis's own scale), the ideal line is drawn forward FROM today:
+  // "at this pace, starting now, you would hit zero by the target date."
+  const idealEnd = Math.max(targetDay, todayDay + 1);
   let idealPts = [];
-  for (let d = 1; d <= totalDays; d++) {
-    const v = d <= targetDay ? totalRemaining * (1 - (d - 1) / (targetDay - 1)) : 0;
+  for (let d = todayDay; d <= totalDays; d++) {
+    const v = d <= targetDay
+      ? totalRemaining * (1 - (d - todayDay) / (idealEnd - todayDay))
+      : 0;
     idealPts.push(`${xFor(d)},${yFor(v)}`);
   }
 
   const todayX = xFor(todayDay), targetX = xFor(targetDay), fdosX = xFor(totalDays);
   const todayY = yFor(totalRemaining);
+
 
   return `<div class="progress-block">
     <div class="progress-block-title">BURNDOWN</div>
@@ -710,7 +721,7 @@ function buildSpaceCategoryChart(bySection, totalRemaining) {
     }).join('');
     return `<div class="cat-row">
       <span class="cat-label">${s.name}</span>
-      <div class="cat-bar-track" style="flex:1 1 auto;max-width:${widthPct}%">${segs}</div>
+      <div class="cat-bar-outer"><div class="cat-bar-track" style="width:${widthPct}%">${segs}</div></div>
       <span class="cat-count">${s.total}</span>
     </div>`;
   }).join('');
