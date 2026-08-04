@@ -851,10 +851,18 @@ function buildSpaceCategoryChart(bySection, totalRemaining) {
 // NOTE: previously cached indefinitely per session, meaning a long-open tab
 // could silently drift out of sync with reality (and with other dashboards
 // that always fetch fresh). Always fetching live now instead.
+// Short-TTL cache: fast on quick repeat visits (switching tabs back and
+// forth), but never stale for long — unlike the old indefinite session
+// cache, which could silently drift out of sync the longer a tab stayed open.
+const CACHE_TTL_MS = 30000;
+const _campusCache = {};
 async function fetchCampus(code) {
+  const cached = _campusCache[code];
+  if (cached && (Date.now() - cached.at) < CACHE_TTL_MS) return cached.data;
   const url = `${SCRIPT_URL}?view=boy&campus=${code}`;
   const res  = await fetch(url);
   const data = await res.json();
+  _campusCache[code] = { data, at: Date.now() };
   return data;
 }
 
@@ -879,15 +887,32 @@ async function loadOverall() {
   el.innerHTML = loadingBlock('Loading all campuses…');
   try {
     const allData = {};
-    await Promise.all(CAMPUSES.map(async c => {
-      try { allData[c.code] = await fetchCampus(c.code); }
-      catch(e) { allData[c.code] = {rooms:[], summary:{}}; }
-    }));
+    const [_, historyData, snapshotData] = await Promise.all([
+      Promise.all(CAMPUSES.map(async c => {
+        try { allData[c.code] = await fetchCampus(c.code); }
+        catch(e) { allData[c.code] = {rooms:[], summary:{}}; }
+      })),
+      fetchReadinessHistory().catch(() => ({rows:[]})),
+      fetchDailySnapshots().catch(() => ({rows:[]})),
+    ]);
     const { totalRemaining: totalSpaceRemaining, bySection: bySectionSpace } = computeSpaceRemaining(allData);
     let historicalSeries = [];
     try {
-      const [historyData, snapshotData] = await Promise.all([fetchReadinessHistory(), fetchDailySnapshots()]);
-      const reconstructed = buildHistoricalRemainingSeries(allData, historyData.rows || []);
+      // If real snapshots already cover every business day so far, skip the
+      // (increasingly large, as the log grows) raw-history reconstruction
+      // entirely — no need to fetch or crunch data we're about to overwrite anyway.
+      const now = new Date();
+      now.setHours(0,0,0,0);
+      const lastDay = now < START_DATE ? 1 : countBusinessDays(START_DATE, now);
+      const snapshotDays = new Set((snapshotData.rows || []).map(s => {
+        const d = new Date(s.ts); d.setHours(0,0,0,0);
+        return d < START_DATE ? null : countBusinessDays(START_DATE, d);
+      }).filter(Boolean));
+      const fullyCovered = snapshotDays.size >= lastDay;
+
+      const reconstructed = fullyCovered
+        ? Array.from({length: lastDay}, (_, i) => ({day: i+1, totalRemaining: 0}))
+        : buildHistoricalRemainingSeries(allData, historyData.rows || []);
       historicalSeries = mergeWithSnapshots(reconstructed, snapshotData.rows || []);
     } catch(e) { historicalSeries = []; }
     el.innerHTML = buildOverall(allData)
