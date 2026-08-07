@@ -104,6 +104,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .signoff-label{width:38px;flex-shrink:0;font-size:13px;font-weight:600;color:var(--text)}
 .signoff-bar-track{flex:1;height:22px;background:rgba(0,0,0,.06);border-radius:6px;overflow:hidden;display:flex}
 .kpi-name{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.priority-tag{font-size:10px;font-weight:700;letter-spacing:0;text-transform:none;color:#64748b;background:#f1f5f9;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
 .kpi-pct{font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:12px}
 .kpi-pct-unit{font-size:16px;color:var(--muted);font-weight:400}
 .kpi-bar-track{height:36px;background:rgba(0,0,0,.07);border-radius:8px;overflow:hidden;display:flex}
@@ -119,6 +120,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* Total Progress: burndown + spaces-by-category */
 .progress-block{margin-top:32px}
+.progress-block:first-child{margin-top:0}
 .progress-block-title{font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 20px;margin:0 -20px 14px}
 .chart-legend{display:flex;gap:18px;margin-bottom:14px;flex-wrap:wrap}
 .chart-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
@@ -139,6 +141,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cat-bar-track{height:20px;background:var(--lt);border-radius:4px;overflow:hidden;display:flex}
 .cat-seg{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700}
 .cat-count{width:34px;flex-shrink:0;text-align:right;font-size:13px;font-weight:600;color:var(--blue)}
+.subgroup-label{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 4px}
+.subgroup-label:first-of-type{margin-top:0}
+.win-entry{border-bottom:1px solid #f1f5f9;padding:12px 0}
+.win-entry:last-child{border-bottom:none}
+.win-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.win-school{font-size:13px;font-weight:700;color:var(--text)}
+.win-time{font-size:11px;color:var(--muted)}
+.win-text{font-size:13.5px;color:var(--text);line-height:1.55}
 .kpi-na{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px}
 .kpi-na-name{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .kpi-na-note{font-size:13px;color:var(--muted)}
@@ -377,6 +387,27 @@ function buildOverall(allData) {
     return total ? { ok: Math.round(ok/total*100), minor: Math.round(minor/total*100), total, okCount: ok, needed: total - ok } : null;
   }
 
+  // Priority spaces are the ones that genuinely need to hit 100% — Classrooms,
+  // Shared Student Spaces, Restrooms, Common Spaces. Offices/Staff Common
+  // Spaces/Technology matter too, just less urgently, so they're tracked
+  // separately rather than diluting this number.
+  function networkPrioritySpacePcts() {
+    let ok = 0, minor = 0, total = 0;
+    CAMPUSES.forEach(c => {
+      const d = allData[c.code];
+      if (!d) return;
+      d.rooms.forEach(r => {
+        if (!PRIORITY_SECTIONS.includes(r.section)) return;
+        const cls = combinedSpaceStatus(r);
+        if (cls === 'dot-na') return;
+        total++;
+        if (cls === 'dot-ok')    ok++;
+        if (cls === 'dot-minor') minor++;
+      });
+    });
+    return total ? { ok: Math.round(ok/total*100), minor: Math.round(minor/total*100), total } : null;
+  }
+
   const trackMeta = [
     {key:'SDO',  label:'Ops'},
     {key:'tech', label:'Tech'},
@@ -416,12 +447,26 @@ function buildOverall(allData) {
     </div>`;
   }
 
+  const priorityP = networkPrioritySpacePcts();
+  let priorityBarHtml = '';
+  if (priorityP) {
+    const pCombined = priorityP.ok + priorityP.minor;
+    const pOkSeg    = priorityP.ok    > 0 ? `<div class="seg-ok" style="width:${priorityP.ok}%"><span class="seg-label-ok">${priorityP.ok >= 8 ? priorityP.ok+'%' : ''}</span></div>` : '';
+    const pMinorSeg = priorityP.minor > 0 ? `<div class="seg-mn" style="width:${priorityP.minor}%"><span class="seg-label-mn">${priorityP.minor >= 8 ? priorityP.minor+'%' : ''}</span></div>` : '';
+    priorityBarHtml = `<div class="kpi-card">
+      <div class="kpi-name">Priority Spaces Ready <span class="priority-tag">Classrooms · Shared Student Spaces · Restrooms · Common Spaces</span></div>
+      <div class="kpi-pct">${pCombined}<span class="kpi-pct-unit">%</span></div>
+      <div class="kpi-bar-track">${pOkSeg}${pMinorSeg}</div>
+    </div>`;
+  }
+
   const timestamps = CAMPUSES.map(c => allData[c.code] && allData[c.code].generated).filter(Boolean);
   const genStr = timestamps.length ? timestamps[0] : '';
 
   return `
     <div class="net-summary">
       ${spaceBarHtml}
+      ${priorityBarHtml}
       <div class="signoffs-box">
         <div class="signoffs-box-title">Signoffs</div>
         ${cardsHtml}
@@ -474,6 +519,7 @@ function combinedSpaceStatus(room) {
 // starts logging "date, total remaining" to a tracking tab. Flagged in the
 // UI itself via the dashed "builds up day by day" note.
 const CLUSTER_MAP = {AEC:'Anacostia', AMC:'Anacostia', BEC:'Benning', BMC:'Benning', EEC:'Edgewood', EMC:'Edgewood'};
+const PRIORITY_SECTIONS = ['Classrooms', 'Shared Student Spaces', 'Restrooms', 'Common Spaces'];
 const CLUSTER_COLOR = {Anacostia:'var(--blue)', Benning:'var(--gold)', Edgewood:'var(--green)'};
 const START_DATE  = new Date(2026, 6, 30);  // Jul 30, 2026
 const TARGET_DATE = new Date(2026, 7, 18);  // Aug 18, 2026
@@ -513,6 +559,36 @@ async function fetchReadinessHistory() {
 async function fetchDailySnapshots() {
   const res = await fetch(`${SCRIPT_URL}?view=dailySnapshots`);
   return res.json();
+}
+
+async function fetchDailyWins() {
+  const res = await fetch(`${SCRIPT_URL}?view=dailyWins`);
+  return res.json();
+}
+
+function buildTodaysWins(winsRows) {
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+
+  const todays = (winsRows || []).filter(w => {
+    const d = new Date(w.ts);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  });
+
+  const entriesHtml = todays.length
+    ? todays.map(w => {
+        const time = new Date(w.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        return `<div class="win-entry">
+          <div class="win-top"><span class="win-school">${w.role}</span><span class="win-time">${time}</span></div>
+          <div class="win-text">${w.text}</div>
+        </div>`;
+      }).join('')
+    : `<div style="font-size:13px;color:var(--muted);padding:8px 0">No wins posted yet today.</div>`;
+
+  return `<div class="progress-block">
+    <div class="progress-block-title">TODAY'S WINS — ${dateLabel}</div>
+    ${entriesHtml}
+  </div>`;
 }
 
 // Prefers a real logged snapshot for any day that has one (accurate for
@@ -811,16 +887,28 @@ function buildSpaceBurndownChart(historicalSeries) {
   </div>`;
 }
 
+const SECONDARY_SECTIONS = ['Offices', 'Staff Common Spaces', 'Technology'];
+
 function buildSpaceCategoryChart(bySection, totalRemaining) {
-  const sections = Object.entries(bySection)
-    .map(([name, counts]) => ({ name, counts, total: counts.Anacostia + counts.Benning + counts.Edgewood }))
-    .filter(s => s.total > 0)
-    .sort((a, b) => b.total - a.total);
+  function rowsFor(sectionNames) {
+    return sectionNames
+      .filter(name => bySection[name] && (bySection[name].Anacostia + bySection[name].Benning + bySection[name].Edgewood) > 0)
+      .map(name => {
+        const counts = bySection[name];
+        return { name, counts, total: counts.Anacostia + counts.Benning + counts.Edgewood };
+      });
+  }
 
-  if (!sections.length) return '';
-  const maxTotal = sections[0].total;
+  const priorityRows  = rowsFor(PRIORITY_SECTIONS);
+  const secondaryRows = rowsFor(SECONDARY_SECTIONS);
+  const allRows = [...priorityRows, ...secondaryRows];
+  if (!allRows.length) return '';
 
-  const rows = sections.map(s => {
+  // Both groups share the SAME max, so a bar's width means the same thing
+  // whether it's in Priority or Secondary — not independently rescaled per group.
+  const maxTotal = Math.max(...allRows.map(s => s.total));
+
+  function renderRow(s) {
     const widthPct = (s.total / maxTotal * 100).toFixed(1);
     const segs = ['Anacostia', 'Benning', 'Edgewood'].map(cl => {
       const n = s.counts[cl];
@@ -833,7 +921,10 @@ function buildSpaceCategoryChart(bySection, totalRemaining) {
       <div class="cat-bar-outer"><div class="cat-bar-track" style="width:${widthPct}%">${segs}</div></div>
       <span class="cat-count">${s.total}</span>
     </div>`;
-  }).join('');
+  }
+
+  const priorityHtml  = priorityRows.length  ? `<div class="subgroup-label">Priority</div>${priorityRows.map(renderRow).join('')}` : '';
+  const secondaryHtml = secondaryRows.length ? `<div class="subgroup-label">Secondary</div>${secondaryRows.map(renderRow).join('')}` : '';
 
   return `<div class="progress-block">
     <div class="progress-block-title">SPACES LEFT, BY CATEGORY</div>
@@ -842,7 +933,8 @@ function buildSpaceCategoryChart(bySection, totalRemaining) {
       <span class="cat-legend-item"><span class="cat-legend-swatch" style="background:var(--gold)"></span>Benning</span>
       <span class="cat-legend-item"><span class="cat-legend-swatch" style="background:var(--green)"></span>Edgewood</span>
     </div>
-    ${rows}
+    ${priorityHtml}
+    ${secondaryHtml}
   </div>`;
 }
 
@@ -887,13 +979,14 @@ async function loadOverall() {
   el.innerHTML = loadingBlock('Loading all campuses…');
   try {
     const allData = {};
-    const [_, historyData, snapshotData] = await Promise.all([
+    const [_, historyData, snapshotData, winsData] = await Promise.all([
       Promise.all(CAMPUSES.map(async c => {
         try { allData[c.code] = await fetchCampus(c.code); }
         catch(e) { allData[c.code] = {rooms:[], summary:{}}; }
       })),
       fetchReadinessHistory().catch(() => ({rows:[]})),
       fetchDailySnapshots().catch(() => ({rows:[]})),
+      fetchDailyWins().catch(() => ({rows:[]})),
     ]);
     const { totalRemaining: totalSpaceRemaining, bySection: bySectionSpace } = computeSpaceRemaining(allData);
     let historicalSeries = [];
@@ -915,7 +1008,8 @@ async function loadOverall() {
         : buildHistoricalRemainingSeries(allData, historyData.rows || []);
       historicalSeries = mergeWithSnapshots(reconstructed, snapshotData.rows || []);
     } catch(e) { historicalSeries = []; }
-    el.innerHTML = buildOverall(allData)
+    el.innerHTML = buildTodaysWins(winsData.rows || [])
+      + buildOverall(allData)
       + buildSpaceBurndownChart(historicalSeries)
       + buildSpaceCategoryChart(bySectionSpace, totalSpaceRemaining);
   } catch(e) {
