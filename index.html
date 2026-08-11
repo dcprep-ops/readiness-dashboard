@@ -567,27 +567,36 @@ async function fetchDailyWins() {
 }
 
 function buildTodaysWins(winsRows) {
-  const now = new Date();
-  const dateLabel = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+  const now = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
 
-  const todays = (winsRows || []).filter(w => {
-    const d = new Date(w.ts);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  // Latest update per role, but only if that latest update is itself
+  // still within the last 24 hours — an old post doesn't linger just
+  // because it happens to be the most recent thing that role ever said.
+  const latestByRole = {};
+  (winsRows || []).forEach(w => {
+    if (!latestByRole[w.role] || w.ts > latestByRole[w.role].ts) latestByRole[w.role] = w;
   });
+  const recent = Object.values(latestByRole)
+    .filter(w => (now - w.ts) < DAY_MS)
+    .sort((a, b) => b.ts - a.ts);
 
-  const entriesHtml = todays.length
-    ? todays.map(w => {
-        const time = new Date(w.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const entriesHtml = recent.length
+    ? recent.map(w => {
+        const stamp = new Date(w.ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
         return `<div class="win-entry">
-          <div class="win-top"><span class="win-school">${w.role}</span><span class="win-time">${time}</span></div>
+          <div class="win-top"><span class="win-school">${w.role}</span><span class="win-time">${stamp}</span></div>
           <div class="win-text">${w.text}</div>
         </div>`;
       }).join('')
-    : `<div style="font-size:13px;color:var(--muted);padding:8px 0">No wins posted yet today.</div>`;
+    : `<div style="font-size:13px;color:var(--muted);padding:8px 0">No updates in the last 24 hours.</div>`;
 
   return `<div class="progress-block">
-    <div class="progress-block-title">TODAY'S WINS — ${dateLabel}</div>
+    <div class="progress-block-title">UPDATES</div>
     ${entriesHtml}
+  </div>
+  <div class="progress-block">
+    <div class="progress-block-title">PROGRESS</div>
   </div>`;
 }
 
