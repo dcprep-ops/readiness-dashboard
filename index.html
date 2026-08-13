@@ -501,9 +501,14 @@ function combinedStatusFromRaw(sdoAssessment, techAssessment) {
   if (techNA) return simplify(sdoCls)  ? 'dot-ok' : 'dot-blank';
 
   const a = simplify(sdoCls), b = simplify(techCls);
-  if (a === 'dot-ok' && b === 'dot-ok') return 'dot-ok';   // green/green
-  if (a && b) return 'dot-minor';                          // green/yellow or yellow/yellow
-  return 'dot-blank';                                      // anything involving bad/pending/not-assessed
+  if (a && b) {
+    // Dual signoff: if at least one side is fully ready, the other being
+    // ok or minor is close enough to count as cleared. Only when BOTH
+    // sides are merely "minor" does it stay in the minor/remaining bucket.
+    if (a === 'dot-ok' || b === 'dot-ok') return 'dot-ok';  // green/green or green/yellow
+    return 'dot-minor';                                      // yellow/yellow
+  }
+  return 'dot-blank';                                        // anything involving bad/pending/not-assessed
 }
 
 function combinedSpaceStatus(room) {
