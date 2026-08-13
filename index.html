@@ -494,8 +494,11 @@ function combinedStatusFromRaw(sdoAssessment, techAssessment) {
   // isn't cleanly green or yellow yet, so it doesn't map to either.
   function simplify(cls) { return (cls === 'dot-ok' || cls === 'dot-minor') ? cls : null; }
 
-  if (sdoNA)  return simplify(techCls) || 'dot-blank';
-  if (techNA) return simplify(sdoCls)  || 'dot-blank';
+  // Single-signoff spaces (the other track is N/A): minor items from the
+  // one team that actually applies still count as ready — there's no
+  // second team's separate concerns to weigh it against.
+  if (sdoNA)  return simplify(techCls) ? 'dot-ok' : 'dot-blank';
+  if (techNA) return simplify(sdoCls)  ? 'dot-ok' : 'dot-blank';
 
   const a = simplify(sdoCls), b = simplify(techCls);
   if (a === 'dot-ok' && b === 'dot-ok') return 'dot-ok';   // green/green
@@ -629,9 +632,15 @@ function buildHistoricalRemainingSeries(allData, historyRows) {
   now.setHours(0,0,0,0);
   const lastDay = now < START_DATE ? 1 : countBusinessDays(START_DATE, now);
 
+  // Key must match the spreadsheet's own convention (Campus|RoomNumber, only
+  // falling back to Campus|SpaceName when there's no room number) — using
+  // name alone caused generic, repeated names within the same campus (e.g.
+  // multiple "Intervention room"s or "Boys restroom"s) to have their
+  // separate submission histories merged into one, scrambling which real
+  // room each historical assessment actually belonged to.
   const byKey = {};
   historyRows.forEach(r => {
-    const key = r.campus + '|' + r.space;
+    const key = r.campus + '|' + (r.room || r.space);
     if (!byKey[key]) byKey[key] = [];
     byKey[key].push({ ts: r.ts, assessment: r.assessment });
   });
@@ -643,7 +652,7 @@ function buildHistoricalRemainingSeries(allData, historyRows) {
     if (!d || !d.rooms) return;
     d.rooms.forEach(r => {
       allRooms.push({
-        key: c.code + '|' + r.space,
+        key: c.code + '|' + (r.roomNumber || r.space),
         techAssessment: r.tech ? r.tech.assessment : null
       });
     });
