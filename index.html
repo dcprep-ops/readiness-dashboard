@@ -645,6 +645,13 @@ function buildHistoricalRemainingSeries(allData, historyRows) {
   // room each historical assessment actually belonged to.
   const byKey = {};
   historyRows.forEach(r => {
+    // Skip counts-only submissions (no assessment set) — matches the
+    // spreadsheet's own "Latest Key With Assessment" column, which does the
+    // same skip. Without this, a counts-only update submitted after a real
+    // "Fully ready" assessment would look like the latest thing on record
+    // for that room and wrongly read as blank/not-assessed, when the real
+    // most recent assessment (still valid) is one submission further back.
+    if (!r.assessment) return;
     const key = r.campus + '|' + (r.room || r.space);
     if (!byKey[key]) byKey[key] = [];
     byKey[key].push({ ts: r.ts, assessment: r.assessment });
