@@ -854,14 +854,22 @@ function computeSpaceRemaining(allData) {
   return { totalRemaining, bySection };
 }
 
-function buildSpaceBurndownChart(historicalSeries) {
+function buildSpaceBurndownChart(historicalSeries, liveTotal) {
   if (!historicalSeries || !historicalSeries.length) {
     return `<div class="progress-block">
       <div class="progress-block-title">BURNDOWN</div>
       <div class="chart-headline"><span class="num">—</span><span class="lbl">no data yet</span></div>
     </div>`;
   }
-  const totalRemaining = historicalSeries[historicalSeries.length - 1].totalRemaining;
+  // The headline number is always the live, right-now total — same value
+  // the category chart shows — not whatever the chart's last plotted point
+  // happens to be. The chart only has a data point for each business day,
+  // so over a weekend (or any day with no plotted point yet) the chart's
+  // last dot can lag behind live reality until the next business day gets
+  // added. Without this, the headline would silently disagree with the
+  // category chart any time real progress happens outside business hours.
+  const chartLastTotal = historicalSeries[historicalSeries.length - 1].totalRemaining;
+  const totalRemaining = (typeof liveTotal === 'number') ? liveTotal : chartLastTotal;
   if (!totalRemaining) {
     return `<div class="progress-block">
       <div class="progress-block-title">BURNDOWN</div>
@@ -873,7 +881,7 @@ function buildSpaceBurndownChart(historicalSeries) {
   const targetDay  = countBusinessDays(START_DATE, TARGET_DATE);
   const todayDay   = historicalSeries.length;
   const startTotal = historicalSeries[0].totalRemaining;
-  const yMax = Math.max(...historicalSeries.map(p => p.totalRemaining), 1);
+  const yMax = Math.max(...historicalSeries.map(p => p.totalRemaining), totalRemaining, 1);
 
   const L = 40, R = 620, TOP = 40, BOT = 217;
   const xStep = (R - L) / (totalDays - 1);
@@ -893,7 +901,8 @@ function buildSpaceBurndownChart(historicalSeries) {
   const actualPts = historicalSeries.map(p => `${xFor(p.day)},${yFor(p.totalRemaining)}`);
 
   const todayX = xFor(todayDay), targetX = xFor(targetDay), fdosX = xFor(totalDays);
-  const todayY = yFor(totalRemaining);
+  const todayY = yFor(chartLastTotal);
+  const liveDiffersFromChart = totalRemaining !== chartLastTotal;
 
   return `<div class="progress-block">
     <div class="progress-block-title">BURNDOWN</div>
@@ -931,6 +940,7 @@ function buildSpaceBurndownChart(historicalSeries) {
       <text x="${targetX}" y="230" font-size="10" fill="#64748b" text-anchor="middle" font-weight="600">Aug 18</text>
       <text x="${fdosX}" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Aug 24</text>
     </svg>
+    ${liveDiffersFromChart ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">Chart trend reflects the last business day (${chartLastTotal} remaining) — the headline number above is live, right now.</div>` : ''}
   </div>`;
 }
 
@@ -1057,7 +1067,7 @@ async function loadOverall() {
     } catch(e) { historicalSeries = []; }
     el.innerHTML = buildTodaysWins(winsData.rows || [])
       + buildOverall(allData)
-      + buildSpaceBurndownChart(historicalSeries)
+      + buildSpaceBurndownChart(historicalSeries, totalSpaceRemaining)
       + buildSpaceCategoryChart(bySectionSpace, totalSpaceRemaining);
   } catch(e) {
     el.innerHTML = '<div class="empty-msg" style="color:var(--red)">Error loading data.</div>';
