@@ -392,8 +392,19 @@ function buildWhatsLeft(rooms) {
     if (opsCls === 'dot-blank')  opsNotAssessed.push(r);
     if (techCls === 'dot-blank') techNotAssessed.push(r);
 
+    // combinedSpaceStatus never actually returns 'dot-bad' — a genuine
+    // "Not ready" on either track collapses into the same 'dot-blank'
+    // bucket as never-assessed, since that function only cares whether
+    // the space is fully done, not what's specifically wrong with it.
+    // So "needs attention" has to check the individual track statuses
+    // directly, excluding anything already cleared overall (a green+
+    // yellow combo that already counts as ready shouldn't show up here
+    // just because one side happens to be "minor").
+    const opsHasIssue  = (opsCls === 'dot-bad' || opsCls === 'dot-minor');
+    const techHasIssue = (techCls === 'dot-bad' || techCls === 'dot-minor');
     const combinedCls = combinedSpaceStatus(r);
-    if (combinedCls === 'dot-bad' || combinedCls === 'dot-minor') {
+    const alreadyCleared = (combinedCls === 'dot-ok' || combinedCls === 'dot-na');
+    if (!alreadyCleared && (opsHasIssue || techHasIssue)) {
       needsAttention.push({ room: r, opsCls, techCls });
     }
   });
