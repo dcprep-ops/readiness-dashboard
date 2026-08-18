@@ -44,11 +44,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ── dots ── */
 .dot{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;line-height:1}
 .dot-ok    {background:var(--green); color:#fff}
+.dot-ok.dot-cleared{background:#a7d7bb;color:#fff}
 .dot-minor {background:var(--yellow);color:#1A2B3C}
 .dot-bad   {background:var(--red);   color:#fff}
 .dot-blank {background:#fff;border:1.5px solid #cbd5e1}
 .dot-na    {background:var(--lt);color:var(--muted);font-size:8px;font-weight:600}
 .dot-pending {background:#378ADD;color:#fff}
+.space-name.cleared{color:var(--muted);font-weight:400}
+.row-note{font-size:12px;color:#64748b;margin-top:2px;line-height:1.4}
 
 /* ── main ── */
 .main{max-width:800px;margin:0 auto;padding:16px 20px 40px}
@@ -143,31 +146,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cat-count{width:34px;flex-shrink:0;text-align:right;font-size:13px;font-weight:600;color:var(--blue)}
 .subgroup-label{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 4px}
 
-.whats-left-card{border:0.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px}
-.whats-left-toggle{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:var(--card)}
-.whats-left-title{font-size:14px;font-weight:700;color:var(--text)}
-.whats-left-count{font-size:12px;color:var(--muted);margin-left:8px;font-weight:400}
-.whats-left-chevron{color:var(--muted);font-size:14px}
-.whats-left-body{padding:0 16px 16px;border-top:1px solid var(--lt)}
-.sub-label{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
-.sub-label:first-of-type{margin-top:16px}
-.plain-list{font-size:13px;color:var(--text);line-height:1.9}
-.plain-list .room{color:var(--muted)}
-table.needs-table{width:100%;border-collapse:collapse;margin-top:4px}
-table.needs-table th{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
-table.needs-table th.sc{text-align:center}
-table.needs-table td{font-size:12.5px;padding:8px;border-bottom:1px solid var(--lt);vertical-align:middle}
-table.needs-table td.sc{text-align:center}
-.needs-table .dot{display:inline-block;width:12px;height:12px;border-radius:50%}
-.needs-table .dot.dot-bad{background:var(--red)}
-.needs-table .dot.dot-minor{background:var(--yellow)}
-.needs-table .dot.dot-blank{background:#fff;border:1.5px solid var(--border)}
-.needs-table .dot.dot-ok{background:var(--green)}
-.needs-table .dot.dot-na{background:var(--lt);border:1.5px solid var(--border)}
-.needs-table .space-name{font-weight:600;color:var(--text)}
-.needs-table .room-num{color:var(--muted);font-weight:400}
-.needs-table .note-text{color:var(--text);line-height:1.4}
-.needs-table .note-empty{color:var(--muted);font-style:italic}
 .subgroup-label:first-of-type{margin-top:0}
 .win-entry{border-bottom:1px solid #f1f5f9;padding:12px 0}
 .win-entry:last-child{border-bottom:none}
@@ -293,11 +271,12 @@ function dotLabel(cls) {
   return '';
 }
 
-function makeDot(assessment, size) {
+function makeDot(assessment, size, muted) {
   const cls = dotClass(assessment);
   const lbl = dotLabel(cls);
   const sz  = size || 22;
-  return `<span class="dot ${cls}" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*0.45)}px">${lbl}</span>`;
+  const mutedClass = (muted && cls === 'dot-ok') ? ' dot-cleared' : '';
+  return `<span class="dot ${cls}${mutedClass}" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*0.45)}px">${lbl}</span>`;
 }
 
 // ── Table builder ─────────────────────────────────────────────────────────────
@@ -312,12 +291,29 @@ const INLINE_LEGEND = `
     <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span class="dot dot-na" style="width:18px;height:18px;font-size:8px">—</span> N/A</span>
   </div>`;
 
+// Urgency rank for sorting within a section — the row's position is driven
+// by whichever of its two tracks is more urgent, so a space with even one
+// flagged track surfaces above a fully-blank one, and both surface above
+// anything cleared.
+const URGENCY_RANK = {'dot-bad':0, 'dot-minor':1, 'dot-pending':2, 'dot-blank':3, 'dot-na':4, 'dot-ok':5};
+function rowUrgencyRank(r) {
+  const opsCls = dotClass(r.SDO ? r.SDO.assessment : null);
+  const techCls = dotClass(r.tech ? r.tech.assessment : null);
+  return Math.min(URGENCY_RANK[opsCls], URGENCY_RANK[techCls]);
+}
+
 function buildSectionedTables(rooms) {
   const groups = {};
   rooms.forEach(r => {
     const sec = r.section || 'Other';
     if (!groups[sec]) groups[sec] = [];
     groups[sec].push(r);
+  });
+
+  // Stable sort — ties (same urgency) keep their original order, which
+  // reflects the spreadsheet's own sequence.
+  Object.keys(groups).forEach(sec => {
+    groups[sec].sort((a, b) => rowUrgencyRank(a) - rowUrgencyRank(b));
   });
 
   const seenSections = new Set();
@@ -339,10 +335,16 @@ function buildSectionedTables(rooms) {
         <tbody>`;
     groups[sec].forEach(r => {
       const hasCounts = sec === 'Classrooms' && (r.deskCount || r.chairCount);
+      const isCleared = combinedSpaceStatus(r) === 'dot-ok';
+      const nameClass = isCleared ? 'space-name cleared' : 'space-name';
+      const showNote = !!(r.notes && !isCleared);
       html += `<tr${hasCounts ? ' class="tight"' : ''}>
-        <td><span class="space-name">${r.space}</span>${r.roomNumber ? ` <span class="space-room-num">(${r.roomNumber})</span>` : ''}</td>
-        <td class="sc">${makeDot(r.SDO  ? r.SDO.assessment  : null)}</td>
-        <td class="sc">${makeDot(r.tech ? r.tech.assessment : null)}</td>
+        <td>
+          <span class="${nameClass}">${r.space}</span>${r.roomNumber ? ` <span class="space-room-num">(${r.roomNumber})</span>` : ''}
+          ${showNote ? `<div class="row-note">${r.notes}</div>` : ''}
+        </td>
+        <td class="sc">${makeDot(r.SDO  ? r.SDO.assessment  : null, 22, isCleared)}</td>
+        <td class="sc">${makeDot(r.tech ? r.tech.assessment : null, 22, isCleared)}</td>
       </tr>`;
       if (hasCounts) {
         html += `<tr class="space-counts-row"><td colspan="3">${r.deskCount || '—'} desks · ${r.chairCount || '—'} chairs</td></tr>`;
@@ -377,94 +379,6 @@ function buildCampusProgress(rooms) {
     <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
     <div class="kpi-bar-track" style="margin-bottom:24px">${okSeg}${minorSeg}</div>
   </div>`;
-}
-
-let whatsLeftCounter = 0;
-
-function buildWhatsLeft(rooms) {
-  const opsNotAssessed = [];
-  const techNotAssessed = [];
-  const needsAttention = [];
-
-  rooms.forEach(r => {
-    const opsCls = dotClass(r.SDO ? r.SDO.assessment : null);
-    const techCls = dotClass(r.tech ? r.tech.assessment : null);
-    if (opsCls === 'dot-blank')  opsNotAssessed.push(r);
-    if (techCls === 'dot-blank') techNotAssessed.push(r);
-
-    // combinedSpaceStatus never actually returns 'dot-bad' — a genuine
-    // "Not ready" on either track collapses into the same 'dot-blank'
-    // bucket as never-assessed, since that function only cares whether
-    // the space is fully done, not what's specifically wrong with it.
-    // So "needs attention" has to check the individual track statuses
-    // directly, excluding anything already cleared overall (a green+
-    // yellow combo that already counts as ready shouldn't show up here
-    // just because one side happens to be "minor").
-    const opsHasIssue  = (opsCls === 'dot-bad' || opsCls === 'dot-minor');
-    const techHasIssue = (techCls === 'dot-bad' || techCls === 'dot-minor');
-    const combinedCls = combinedSpaceStatus(r);
-    const alreadyCleared = (combinedCls === 'dot-ok' || combinedCls === 'dot-na');
-    if (!alreadyCleared && (opsHasIssue || techHasIssue)) {
-      needsAttention.push({ room: r, opsCls, techCls });
-    }
-  });
-
-  const total = opsNotAssessed.length + techNotAssessed.length + needsAttention.length;
-  if (!total) return '';
-
-  whatsLeftCounter++;
-  const bodyId = `wl-body-${whatsLeftCounter}`;
-  const chevId = `wl-chev-${whatsLeftCounter}`;
-
-  function roomLabel(r) {
-    return r.roomNumber ? `${r.space} <span class="room">(${r.roomNumber})</span>` : r.space;
-  }
-
-  const opsListHtml = opsNotAssessed.length
-    ? `<div class="sub-label">Not Yet Assessed — Ops (${opsNotAssessed.length})</div>
-       <div class="plain-list">${opsNotAssessed.map(roomLabel).join('<br>')}</div>`
-    : '';
-
-  const techListHtml = techNotAssessed.length
-    ? `<div class="sub-label">Not Yet Assessed — Tech (${techNotAssessed.length})</div>
-       <div class="plain-list">${techNotAssessed.map(roomLabel).join('<br>')}</div>`
-    : '';
-
-  const needsRowsHtml = needsAttention.map(({room, opsCls, techCls}) => `<tr>
-      <td><span class="space-name">${room.space}</span>${room.roomNumber ? ` <span class="room-num">(${room.roomNumber})</span>` : ''}</td>
-      <td class="sc"><span class="dot ${opsCls}"></span></td>
-      <td class="sc"><span class="dot ${techCls}"></span></td>
-      <td class="${room.notes ? 'note-text' : 'note-empty'}">${room.notes || 'No note on file'}</td>
-    </tr>`).join('');
-
-  const needsTableHtml = needsAttention.length
-    ? `<div class="sub-label">Needs Attention — Red / Yellow (${needsAttention.length})</div>
-       <table class="needs-table">
-         <thead><tr><th>Space</th><th class="sc">Ops</th><th class="sc">Tech</th><th>Last Note</th></tr></thead>
-         <tbody>${needsRowsHtml}</tbody>
-       </table>`
-    : '';
-
-  return `<div class="whats-left-card">
-    <div class="whats-left-toggle" onclick="toggleWhatsLeft('${bodyId}','${chevId}')">
-      <span class="whats-left-title">What's Left<span class="whats-left-count">${total} spaces need action</span></span>
-      <span class="whats-left-chevron" id="${chevId}">▸</span>
-    </div>
-    <div class="whats-left-body" id="${bodyId}" style="display:none">
-      ${opsListHtml}
-      ${techListHtml}
-      ${needsTableHtml}
-    </div>
-  </div>`;
-}
-
-function toggleWhatsLeft(bodyId, chevId) {
-  const body = document.getElementById(bodyId);
-  const chev = document.getElementById(chevId);
-  if (!body) return;
-  const isHidden = body.style.display === 'none';
-  body.style.display = isHidden ? 'block' : 'none';
-  if (chev) chev.textContent = isHidden ? '▾' : '▸';
 }
 
 function buildOverall(allData) {
@@ -1138,7 +1052,7 @@ async function loadCampusPanel(code) {
       panel.innerHTML = '<div class="main"><div class="empty-msg">No submissions yet for ' + code + '.</div></div>';
       return;
     }
-    panel.innerHTML = `<div class="main">${buildCampusProgress(data.rooms)}${buildWhatsLeft(data.rooms)}${buildSectionedTables(data.rooms)}</div>`;
+    panel.innerHTML = `<div class="main">${buildCampusProgress(data.rooms)}${buildSectionedTables(data.rooms)}</div>`;
     document.getElementById('hdr-meta').textContent = `SY 2026–27 · ${data.generated || ''}`;
   } catch(e) {
     panel.innerHTML = `<div class="main"><div class="empty-msg" style="color:var(--red)">Error loading ${code} data. Check the Apps Script URL.</div></div>`;
