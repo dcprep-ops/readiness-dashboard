@@ -560,6 +560,7 @@ const CLUSTER_COLOR = {Anacostia:'var(--blue)', Benning:'var(--gold)', Edgewood:
 const START_DATE  = new Date(2026, 6, 30);  // Jul 30, 2026
 const TARGET_DATE = new Date(2026, 7, 18);  // Aug 18, 2026
 const FDOS_DATE   = new Date(2026, 7, 24);  // Aug 24, 2026 — First Day of School
+const END_DATE    = new Date(2026, 7, 28);  // Aug 28, 2026 — chart extends past FDOS since not everything resolves by then
 
 function countBusinessDays(start, end) {
   let count = 0;
@@ -905,8 +906,9 @@ function buildSpaceBurndownChart(historicalSeries, liveTotal) {
     </div>`;
   }
 
-  const totalDays = countBusinessDays(START_DATE, FDOS_DATE);
+  const totalDays = countBusinessDays(START_DATE, END_DATE);
   const targetDay  = countBusinessDays(START_DATE, TARGET_DATE);
+  const fdosDay    = countBusinessDays(START_DATE, FDOS_DATE);
   const todayDay   = historicalSeries.length;
   const startTotal = historicalSeries[0].totalRemaining;
   const yMax = Math.max(...historicalSeries.map(p => p.totalRemaining), totalRemaining, 1);
@@ -928,7 +930,7 @@ function buildSpaceBurndownChart(historicalSeries, liveTotal) {
   // Actual: a real reconstructed point for every business day since Jul 30
   const actualPts = historicalSeries.map(p => `${xFor(p.day)},${yFor(p.totalRemaining)}`);
 
-  const todayX = xFor(todayDay), targetX = xFor(targetDay), fdosX = xFor(totalDays);
+  const todayX = xFor(todayDay), targetX = xFor(targetDay), fdosX = xFor(fdosDay), endX = xFor(totalDays);
   const todayY = yFor(chartLastTotal);
   const liveDiffersFromChart = totalRemaining !== chartLastTotal;
 
@@ -967,6 +969,7 @@ function buildSpaceBurndownChart(historicalSeries, liveTotal) {
       <text x="40" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Jul 30</text>
       <text x="${targetX}" y="230" font-size="10" fill="#64748b" text-anchor="middle" font-weight="600">Aug 18</text>
       <text x="${fdosX}" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Aug 24</text>
+      <text x="${endX}" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Aug 28</text>
     </svg>
     ${liveDiffersFromChart ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">Chart trend reflects the last business day (${chartLastTotal} remaining) — the headline number above is live, right now.</div>` : ''}
   </div>`;
