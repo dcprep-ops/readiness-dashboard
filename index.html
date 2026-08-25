@@ -546,6 +546,23 @@ function combinedSpaceStatus(room) {
   );
 }
 
+// combinedSpaceStatus() above is deliberately simplified for the burndown/
+// category charts, which only care about "fully ready" vs "not yet" — it
+// collapses bad, blank, and pending all into the same non-ok bucket and
+// never returns dot-bad. That's wrong for the EMC map, which needs to show
+// *why* a space isn't ready. This keeps dot-bad (and dot-pending) visible
+// whenever either track actually reports it, matching the same urgency
+// priority already used elsewhere (see URGENCY_RANK) — bad outranks
+// everything — and only falls back to the collapsed combined status for
+// the ok/minor/blank/na cases.
+function mapRoomStatus(room) {
+  const sdoCls  = dotClass(room.SDO  ? room.SDO.assessment  : null);
+  const techCls = dotClass(room.tech ? room.tech.assessment : null);
+  if (sdoCls === 'dot-bad'     || techCls === 'dot-bad')     return 'dot-bad';
+  if (sdoCls === 'dot-pending' || techCls === 'dot-pending') return 'dot-pending';
+  return combinedSpaceStatus(room);
+}
+
 // ── Total Progress: burndown + spaces-by-category ──────────────────────────
 // NOTE: the Apps Script only returns each room's *current* status, not a
 // history of what it was on past dates — there's no persisted daily
@@ -1056,72 +1073,139 @@ function roundedPathD(pts, radius) {
   return d;
 }
 
+const MAP_STATUS_COLOR = {'dot-ok':'var(--green)','dot-minor':'var(--yellow)','dot-bad':'var(--red)',
+  'dot-pending':'#378ADD','dot-blank':'#cbd5e1','dot-na':'#e2e8f0'};
+
+function mapDotSvg(n, labelSide) {
+  const color = MAP_STATUS_COLOR[n.cls] || '#cbd5e1';
+  const textX = labelSide === 'right' ? n.x + 14 : n.x - 14;
+  return `<circle cx="${n.x}" cy="${n.y}" r="7" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+    <text x="${textX}" y="${n.y + 4}" font-size="11" fill="var(--text)" text-anchor="${labelSide === 'right' ? 'start' : 'end'}">${n.label}</text>`;
+}
+
+function mapNodeLookup(rooms) {
+  const byRoom = {}, bySpace = {};
+  rooms.forEach(r => {
+    if (r.roomNumber) byRoom[r.roomNumber] = r;
+    bySpace[r.space.toLowerCase()] = r;
+  });
+  return {
+    byNumber(roomNumber, fallbackLabel) {
+      const r = byRoom[roomNumber];
+      if (!r) return { label: fallbackLabel || `Room ${roomNumber}`, cls: 'dot-blank' };
+      return { label: r.space + (r.roomNumber ? ` (${r.roomNumber})` : ''), cls: mapRoomStatus(r) };
+    },
+    bySpaceName(name, fallbackLabel) {
+      const r = bySpace[name.toLowerCase()];
+      if (!r) return { label: fallbackLabel || name, cls: 'dot-blank' };
+      return { label: r.space, cls: mapRoomStatus(r) };
+    }
+  };
+}
+
 // Edgewood Middle, 1st floor: right side is one straight vertical line
-// (112 → 135A → 100 in real sequence); left side bends through 111-110-109-108
+// (112 → 135A → 100 in real sequence); left side bends through 110-109-108
 // down to 107, with 105 to 107's right, ending near 101 (which sits close to
 // 100, the right line's terminus) — per the layout spec worked out earlier.
-// Room numbers are matched against All Spaces' Room # column; anything not
-// found (e.g. 111, which isn't a tracked space) renders muted rather than
-// guessed at.
+// Room 111 is intentionally omitted — it's not a separate tracked space;
+// the door there opens into 110's room, not a distinct room of its own.
 //
 // ASSUMPTION TO VERIFY: restroom rows are matched by looking for "1st" or
 // "lower" in the space name (to pull just this floor's restrooms, not the
 // 2nd floor's) — confirm that matches how they're actually named in All
 // Spaces; if the text differs, restrooms just won't appear on the map rather
 // than showing wrong ones.
-function buildEMCMap(emcData) {
+function buildEMCLowerMap(emcData) {
   const rooms = (emcData && emcData.rooms) || [];
   if (!rooms.length) return '';
-  const byRoom = {};
-  rooms.forEach(r => { if (r.roomNumber) byRoom[r.roomNumber] = r; });
+  const L = mapNodeLookup(rooms);
   const restrooms = rooms.filter(r => r.section === 'Restrooms' && /1st|lower/i.test(r.space));
 
-  function node(roomNumber, fallbackLabel) {
-    const r = byRoom[roomNumber];
-    if (!r) return { label: fallbackLabel || `Room ${roomNumber}`, cls: 'dot-blank' };
-    return { label: r.space + (r.roomNumber ? ` (${r.roomNumber})` : ''), cls: combinedSpaceStatus(r) };
-  }
+  const rightNodes = ['112','115','119','120','121'].map(k => L.byNumber(k));
+  restrooms.forEach(r => rightNodes.push({ label: r.space, cls: mapRoomStatus(r) }));
+  ['135B','135A','100'].forEach(k => rightNodes.push(L.byNumber(k)));
 
-  const rightNodes = ['112','115','119','120','121'].map(k => node(k));
-  restrooms.forEach(r => rightNodes.push({ label: r.space, cls: combinedSpaceStatus(r) }));
-  ['135B','135A','100'].forEach(k => rightNodes.push(node(k)));
-
-  const leftNodes = ['111','110','109','108'].map(k => node(k, 'Not tracked'));
-  const n107 = node('107'), n105 = node('105'), n101 = node('101');
+  const leftNodes = ['110','109','108'].map(k => L.byNumber(k));
+  const n107 = L.byNumber('107'), n105 = L.byNumber('105'), n101 = L.byNumber('101');
 
   const RX = 340, rightYStart = 60, rightYStep = 38;
   rightNodes.forEach((n, i) => { n.x = RX; n.y = rightYStart + i * rightYStep; });
   const rightBottomY = rightNodes[rightNodes.length - 1].y;
 
-  const leftPts = [[200,100],[190,150],[180,200],[170,250]];
+  const leftPts = [[210,100],[198,150],[186,200]];
   leftNodes.forEach((n, i) => { n.x = leftPts[i][0]; n.y = leftPts[i][1]; });
-  n107.x = 210; n107.y = 300;
-  n105.x = 270; n105.y = 335;
+  n107.x = 210; n107.y = 250;
+  n105.x = 270; n105.y = 288;
   n101.x = 235; n101.y = rightBottomY - 6;
 
   const leftPathPts = leftNodes.map(n => [n.x, n.y]).concat([[n107.x,n107.y],[n105.x,n105.y],[n101.x,n101.y]]);
 
-  const STATUS_COLOR = {'dot-ok':'var(--green)','dot-minor':'var(--yellow)','dot-bad':'var(--red)',
-    'dot-pending':'#378ADD','dot-blank':'#cbd5e1','dot-na':'#e2e8f0'};
+  const rightDots = rightNodes.map(n => mapDotSvg(n, 'right')).join('');
+  const leftDots  = leftNodes.map(n => mapDotSvg(n, 'left')).join('')
+    + mapDotSvg(n107, 'left') + mapDotSvg(n105, 'right') + mapDotSvg(n101, 'left');
 
-  function dotSvg(n, labelSide) {
-    const color = STATUS_COLOR[n.cls] || '#cbd5e1';
-    const textX = labelSide === 'right' ? n.x + 14 : n.x - 14;
-    return `<circle cx="${n.x}" cy="${n.y}" r="7" fill="${color}" stroke="#fff" stroke-width="1.5"/>
-      <text x="${textX}" y="${n.y + 4}" font-size="11" fill="var(--text)" text-anchor="${labelSide === 'right' ? 'start' : 'end'}">${n.label}</text>`;
-  }
-
-  const rightDots = rightNodes.map(n => dotSvg(n, 'right')).join('');
-  const leftDots  = leftNodes.map(n => dotSvg(n, 'left')).join('')
-    + dotSvg(n107, 'left') + dotSvg(n105, 'right') + dotSvg(n101, 'left');
-
-  const topConnector    = `M ${leftNodes[0].x},${leftNodes[0].y} L ${rightNodes[0].x},${rightNodes[0].y}`;
+  // No connector between the two lines at top — 112 is the right line's own
+  // first point, not a shared apex; the left line is its own independent
+  // bent line, per the layout spec. The only place the two lines relate
+  // spatially is at the bottom, where 101 and 100 sit close together —
+  // shown with a light dashed connector rather than treating them as the
+  // same line.
   const bottomConnector = `M ${n101.x},${n101.y} L ${RX},${rightBottomY}`;
 
   return `<div class="progress-block">
     <div class="progress-block-title">EDGEWOOD MIDDLE — SPACE MAP (1ST FLOOR)</div>
     <svg viewBox="0 0 520 ${rightBottomY + 40}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
-      <path d="${topConnector}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      <path d="${roundedPathD(leftPathPts, 14)}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      <line x1="${RX}" y1="${rightNodes[0].y}" x2="${RX}" y2="${rightBottomY}" stroke="var(--border)" stroke-width="1.5"/>
+      <path d="${bottomConnector}" fill="none" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>
+      ${rightDots}
+      ${leftDots}
+    </svg>
+  </div>`;
+}
+
+// Edgewood Middle, 2nd floor: mirrors the 1st floor's layout language —
+// right side a straight line (218 → 238), left side a bent line (217 down
+// through 205), bending at the bottom toward the Lobby (matching 107→105's
+// role on the floor below) and ending near 202, which sits close to 238 —
+// same "near each other but not one line" relationship as 101/100 below.
+// UNVERIFIED, same as the 1st floor map: restroom name matching (this time
+// "2nd"/"upper") and that "Lobby" is the exact space name used in All
+// Spaces for that room.
+function buildEMCUpperMap(emcData) {
+  const rooms = (emcData && emcData.rooms) || [];
+  if (!rooms.length) return '';
+  const L = mapNodeLookup(rooms);
+  const restrooms = rooms.filter(r => r.section === 'Restrooms' && /2nd|upper/i.test(r.space));
+
+  const rightNodes = ['218','219','220','221'].map(k => L.byNumber(k));
+  restrooms.forEach(r => rightNodes.push({ label: r.space, cls: mapRoomStatus(r) }));
+  rightNodes.push(L.byNumber('238'));
+
+  const leftKeys = ['217','216','215','214','213','212','209','208','207','205'];
+  const leftNodes = leftKeys.map(k => L.byNumber(k));
+  const nLobby = L.bySpaceName('Lobby'), n202 = L.byNumber('202');
+
+  const RX = 340, rightYStart = 60, rightYStep = 38;
+  rightNodes.forEach((n, i) => { n.x = RX; n.y = rightYStart + i * rightYStep; });
+  const rightBottomY = rightNodes[rightNodes.length - 1].y;
+
+  leftNodes.forEach((n, i) => { n.x = 220 - i * 6; n.y = 60 + i * 30; });
+  const lastLeft = leftNodes[leftNodes.length - 1];
+  nLobby.x = lastLeft.x + 55; nLobby.y = lastLeft.y + 40;
+  n202.x = lastLeft.x - 10;   n202.y = rightBottomY - 6;
+
+  const leftPathPts = leftNodes.map(n => [n.x, n.y]).concat([[nLobby.x,nLobby.y],[n202.x,n202.y]]);
+
+  const rightDots = rightNodes.map(n => mapDotSvg(n, 'right')).join('');
+  const leftDots  = leftNodes.map(n => mapDotSvg(n, 'left')).join('')
+    + mapDotSvg(nLobby, 'right') + mapDotSvg(n202, 'left');
+
+  const bottomConnector = `M ${n202.x},${n202.y} L ${RX},${rightBottomY}`;
+
+  return `<div class="progress-block">
+    <div class="progress-block-title">EDGEWOOD MIDDLE — SPACE MAP (2ND FLOOR)</div>
+    <svg viewBox="0 0 520 ${rightBottomY + 40}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
       <path d="${roundedPathD(leftPathPts, 14)}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
       <line x1="${RX}" y1="${rightNodes[0].y}" x2="${RX}" y2="${rightBottomY}" stroke="var(--border)" stroke-width="1.5"/>
       <path d="${bottomConnector}" fill="none" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>
@@ -1160,7 +1244,7 @@ async function loadCampusPanel(code) {
       panel.innerHTML = '<div class="main"><div class="empty-msg">No submissions yet for ' + code + '.</div></div>';
       return;
     }
-    panel.innerHTML = `<div class="main">${buildCampusProgress(data.rooms)}${buildSectionedTables(data.rooms)}</div>`;
+    panel.innerHTML = `<div class="main">${buildCampusProgress(data.rooms)}${buildSectionedTables(data.rooms)}${code === 'EMC' ? buildEMCLowerMap(data) + buildEMCUpperMap(data) : ''}</div>`;
     document.getElementById('hdr-meta').textContent = `SY 2026–27 · ${data.generated || ''}`;
   } catch(e) {
     panel.innerHTML = `<div class="main"><div class="empty-msg" style="color:var(--red)">Error loading ${code} data. Check the Apps Script URL.</div></div>`;
@@ -1195,13 +1279,12 @@ async function loadOverall() {
     el.innerHTML = buildTodaysWins(winsData.rows || [])
       + buildOverall(allData)
       + '<div id="burndown-slot"></div>'
-      + '<div id="category-slot"></div>'
-      + '<div id="emc-map-slot"></div>';
+      + '<div id="category-slot"></div>';
     document.getElementById('hdr-meta').textContent = `SY 2026–27 · ${overallData.generated || ''}`;
 
-    // The historical-series reconstruction (and the EMC map) run on the next
-    // frame, so the browser gets to paint the section above first instead of
-    // everything appearing at once after a single longer block.
+    // The historical-series reconstruction runs on the next frame, so the
+    // browser gets to paint the section above first instead of everything
+    // appearing at once after one longer block.
     requestAnimationFrame(() => {
       let historicalSeries = [];
       try {
@@ -1225,7 +1308,6 @@ async function loadOverall() {
 
       document.getElementById('burndown-slot').outerHTML  = buildSpaceBurndownChart(historicalSeries, totalSpaceRemaining);
       document.getElementById('category-slot').outerHTML  = buildSpaceCategoryChart(bySectionSpace, totalSpaceRemaining);
-      document.getElementById('emc-map-slot').outerHTML    = buildEMCMap(allData.EMC);
       animateBurndownLine();
     });
   } catch(e) {
@@ -1240,22 +1322,31 @@ async function loadOverall() {
 // instead of it just appearing fully formed. Classic SVG technique: measure
 // the path's real length, hide it behind its own dash gap, then animate the
 // gap closing.
+//
+// FIXED: originally forced a reflow and set the transition in the same
+// synchronous block, which some browsers can still batch into a single
+// style recalculation — skipping straight to the end state with no visible
+// animation. A double requestAnimationFrame (start hidden → let one frame
+// actually paint that state → then switch on the transition) is the
+// reliable way to guarantee the "before" state is committed first.
 function animateBurndownLine() {
   const line = document.getElementById('actualLine');
   const dot  = document.getElementById('todayDot');
   if (!line) return;
   const len = line.getTotalLength();
+  line.style.transition = 'none';
   line.style.strokeDasharray  = len;
   line.style.strokeDashoffset = len;
-  // Force the browser to register the starting state before switching on
-  // the transition — otherwise it can jump straight to the end state.
-  line.getBoundingClientRect();
-  line.style.transition = 'stroke-dashoffset 1.1s ease-out';
-  line.style.strokeDashoffset = '0';
-  if (dot) {
-    dot.style.transition = 'opacity .3s ease-out';
-    setTimeout(() => { dot.style.opacity = '1'; }, 1000);
-  }
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      line.style.transition = 'stroke-dashoffset 1.1s ease-out';
+      line.style.strokeDashoffset = '0';
+      if (dot) {
+        dot.style.transition = 'opacity .3s ease-out';
+        setTimeout(() => { dot.style.opacity = '1'; }, 900);
+      }
+    });
+  });
 }
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
