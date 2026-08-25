@@ -1078,10 +1078,23 @@ const MAP_STATUS_COLOR = {'dot-ok':'var(--green)','dot-minor':'var(--yellow)','d
 
 function mapDotSvg(n, labelSide) {
   const color = MAP_STATUS_COLOR[n.cls] || '#cbd5e1';
-  const textX = labelSide === 'right' ? n.x + 14 : n.x - 14;
+  let textX, textY, anchor;
+  if (n.labelOffset) {
+    textX = n.x + n.labelOffset.x; textY = n.y + n.labelOffset.y;
+    anchor = n.labelOffset.anchor || 'middle';
+  } else {
+    textX = labelSide === 'right' ? n.x + 14 : n.x - 14;
+    textY = n.y + 4;
+    anchor = labelSide === 'right' ? 'start' : 'end';
+  }
   return `<circle id="${n.domId}" cx="${n.x}" cy="${n.y}" r="7" fill="${color}" stroke="#fff" stroke-width="1.5" style="transition:fill .3s"/>
-    <text x="${textX}" y="${n.y + 4}" font-size="11" fill="var(--text)" text-anchor="${labelSide === 'right' ? 'start' : 'end'}">${n.label}</text>`;
+    <text x="${textX}" y="${textY}" font-size="11" fill="var(--text)" text-anchor="${anchor}">${n.label}</text>`;
 }
+
+// A plain geometry vertex — bends the path but has no dot or label. Used so
+// rooms can sit along a straight run instead of exactly at a turn, the way
+// stations sit between bends on a real subway map rather than at every one.
+function corner(x, y) { return { x, y, isCorner: true }; }
 
 function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
 
@@ -1112,141 +1125,175 @@ function mapNodeLookup(rooms, floorKey) {
 }
 
 // Both EMC floor maps are drawn as ONE continuous closed loop — not two
-// separate lines joined at a corner. The loop walks the real room sequence
-// around the building (up one side, across the top, down the other, then
-// back along the bottom), so every bend — including at 112 (1st floor) and
-// 218 (2nd floor) — is just another rounded waypoint on the same path, the
-// way a subway line curves through a station rather than stopping there.
+// separate lines joined at a corner. Straight rails, real corner() vertices
+// only where the path actually turns, rooms placed along the straight runs
+// between them wherever possible.
 function buildEMCLoop(title, loopNodes, viewW) {
   const maxY = Math.max(...loopNodes.map(n => n.y)) + 40;
   const pathPts = loopNodes.map(n => [n.x, n.y]).concat([[loopNodes[0].x, loopNodes[0].y]]); // close back to start
-  const labelSideFor = n => n.labelSide || 'right';
-  const dots = loopNodes.map(n => mapDotSvg(n, labelSideFor(n))).join('');
+  const dots = loopNodes.filter(n => !n.isCorner).map(n => mapDotSvg(n, n.labelSide || 'right')).join('');
+  // FIXED: .progress-block-title uses negative side margins to bleed
+  // edge-to-edge inside the full-width .main container — that breaks once
+  // the block is a narrower flex sibling instead (the two titles bled into
+  // each other, which is what "stacking" was). This is a local title bar
+  // scoped to its own block's width instead.
   return `<div class="progress-block" style="flex:1 1 340px;min-width:0">
-    <div class="progress-block-title">${title}</div>
+    <div style="font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 12px;margin:0 0 14px;border-radius:6px">${title}</div>
     <svg viewBox="0 0 ${viewW} ${maxY}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
-      <path d="${roundedPathD(pathPts, 22)}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      <path d="${roundedPathD(pathPts, 20)}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
       ${dots}
     </svg>
   </div>`;
 }
 
-// Both floors share ONE frame — same rail endpoints and cap positions —
-// since it's the same building footprint on both levels. Only the number
-// of stops along each rail differs (the 2nd floor has far more small
-// offices than the 1st), so each floor interpolates its own room count
-// between the same fixed points rather than each floor inventing its own
-// shape. This is what makes the two maps actually look like the same
-// building instead of two unrelated diagrams.
+// Both floors share the same top-line width and left/right rail x-positions
+// — same building footprint on both levels — so the two maps read as the
+// same shape. Only the number of stops along each rail, and what happens
+// at the bottom, differs per floor's real layout.
 const EMC_FRAME = {
-  leftBottom:  [170, 380],
-  leftTop:     [210, 110],
-  topPeak:     [270, 50],
-  rightTop:    [330, 95],
-  rightBottom: [330, 380],
-  dip:         [280, 420],
-  ret:         [280, 380]
+  leftBottomCorner:  [165, 400],
+  leftTopCorner:     [215, 105],
+  rightTopCorner:    [335, 105],
+  rightBottomY:      400
 };
 
-// Straight-line interpolation between two points, inclusive of both ends —
-// deliberately real straight segments (like Metro's rails), not an organic
-// curve; roundedPathD only softens the actual corners where the path bends.
-function interpolate(p0, p1, count) {
-  if (count === 1) return [p0];
+// n points strictly BETWEEN p0 and p1 — excludes both endpoints, so rooms
+// placed this way never land exactly on a corner.
+function interpolateBetween(p0, p1, n) {
   const pts = [];
-  for (let i = 0; i < count; i++) {
-    const t = i / (count - 1);
+  for (let i = 1; i <= n; i++) {
+    const t = i / (n + 1);
     pts.push([p0[0] + (p1[0]-p0[0])*t, p0[1] + (p1[1]-p0[1])*t]);
   }
   return pts;
 }
 
-// Edgewood Middle, 1st floor. One continuous loop, stadium-shaped like a
-// Metro loop line: a straight left rail (108-109-110) and straight right
-// rail (115 through 100) joined by two smooth rounded caps — 112 at top,
-// and 101/105 at bottom, with 107 anchoring the rail's bottom end. Room
-// 111 is intentionally omitted — it's not a separate tracked space; the
-// door there opens into 110's room, not a distinct room of its own.
+// Guarantees three restroom slots always show, even if the section/name
+// filter below finds fewer than three in the live data — "add back" means
+// they should always be present, not conditionally present. Any slot the
+// filter didn't find just renders blank (no data found) rather than
+// disappearing outright.
+function restroomSlots(rooms, floorRegex, floorKey) {
+  const found = rooms.filter(r => r.section === 'Restrooms' && floorRegex.test(r.space));
+  const labels = ['Girls restroom', 'Boys restroom', 'Adult restroom'];
+  return labels.map((label, i) => {
+    if (found[i]) return { label: found[i].space, cls: mapRoomStatus(found[i]), domId: `mapdot-${floorKey}-restroom-${i}`, roomNumber: found[i].roomNumber || null };
+    return { label, cls: 'dot-blank', domId: `mapdot-${floorKey}-restroom-${i}`, roomNumber: null };
+  });
+}
+
+// Edgewood Middle, 1st floor. One continuous loop: a straight left rail
+// (107-108-109-110) and straight right rail (115 through 100), joined by a
+// horizontal line at the top with 112 sitting on it (not at either corner),
+// and a short closing run at the bottom where 100 and 101 share the same
+// height — real building constraint, not a style choice. Room 111 is
+// intentionally omitted — it's not a separate tracked space; the door
+// there opens into 110's room, not a distinct room of its own.
 //
 // ASSUMPTION TO VERIFY: restroom rows are matched by looking for "1st" or
 // "lower" in the space name — confirm that matches how they're actually
-// named in All Spaces; if the text differs, restrooms just won't appear.
+// named in All Spaces.
 function buildEMCLowerMap(emcData) {
   const rooms = (emcData && emcData.rooms) || [];
   if (!rooms.length) return { html: '', nodes: [] };
   const L = mapNodeLookup(rooms, 'lower');
-  const restrooms = rooms.filter(r => r.section === 'Restrooms' && /1st|lower/i.test(r.space));
+  const restroomNodes = restroomSlots(rooms, /1st|lower/i, 'lower');
 
   const n107 = L.byNumber('107'), n108 = L.byNumber('108'), n109 = L.byNumber('109'), n110 = L.byNumber('110');
   const n112 = L.byNumber('112');
   const n115 = L.byNumber('115'), n119 = L.byNumber('119'), n120 = L.byNumber('120'), n121 = L.byNumber('121');
-  const restroomNodes = restrooms.map(r => L.fromRoom(r));
   const n135B = L.byNumber('135B'), n135A = L.byNumber('135A'), n100 = L.byNumber('100');
   const n101 = L.byNumber('101'), n105 = L.byNumber('105');
 
-  const leftRail  = [n107, n108, n109, n110];
-  const leftPts   = interpolate(EMC_FRAME.leftBottom, EMC_FRAME.leftTop, leftRail.length);
-  leftRail.forEach((n, i) => { [n.x, n.y] = leftPts[i]; n.labelSide = 'left'; });
+  const cBotL = corner(...EMC_FRAME.leftBottomCorner);
+  const cTopL = corner(...EMC_FRAME.leftTopCorner);
+  const cTopR = corner(...EMC_FRAME.rightTopCorner);
 
-  [n112.x, n112.y] = EMC_FRAME.topPeak; n112.labelSide = 'right';
+  // Left rail: 107, 108, 109, 110 — strictly between the two left corners.
+  const leftRoomPts = interpolateBetween(EMC_FRAME.leftBottomCorner, EMC_FRAME.leftTopCorner, 4);
+  [n107, n108, n109, n110].forEach((n, i) => { [n.x, n.y] = leftRoomPts[i]; n.labelSide = 'left'; });
 
-  const rightRail = [n115, n119, n120, n121, ...restroomNodes, n135B, n135A, n100];
-  const rightPts  = interpolate(EMC_FRAME.rightTop, EMC_FRAME.rightBottom, rightRail.length);
-  rightRail.forEach((n, i) => { [n.x, n.y] = rightPts[i]; n.labelSide = 'right'; });
+  // Top line: horizontal, 112 at the midpoint — not at either corner.
+  n112.x = (EMC_FRAME.leftTopCorner[0] + EMC_FRAME.rightTopCorner[0]) / 2;
+  n112.y = EMC_FRAME.leftTopCorner[1];
+  n112.labelSide = 'right'; n112.labelOffset = { x: 0, y: -14, anchor: 'middle' };
 
-  [n101.x, n101.y] = EMC_FRAME.dip; n101.labelSide = 'left';
-  [n105.x, n105.y] = EMC_FRAME.ret; n105.labelSide = 'right';
+  // Right rail: 115, 119, 120, 121, restrooms, 135B, 135A — strictly
+  // between the top-right corner and 100 (100 itself sits at the bottom of
+  // the rail, since it has to share a height with 101 right after it).
+  const rightRoomList = [n115, n119, n120, n121, ...restroomNodes, n135B, n135A];
+  const rightRoomPts  = interpolateBetween(EMC_FRAME.rightTopCorner, [EMC_FRAME.rightTopCorner[0], EMC_FRAME.rightBottomY], rightRoomList.length);
+  rightRoomList.forEach((n, i) => { [n.x, n.y] = rightRoomPts[i]; n.labelSide = 'right'; });
+  n100.x = EMC_FRAME.rightTopCorner[0]; n100.y = EMC_FRAME.rightBottomY; n100.labelSide = 'right';
 
-  const loop = [...leftRail, n112, ...rightRail, n101, n105];
-  return { html: buildEMCLoop('EDGEWOOD MIDDLE — SPACE MAP (1ST FLOOR)', loop, 520), nodes: loop };
+  // Bottom: 101 sits at the same height as 100 (Gym / Princeton), then
+  // 105 above 101, closing back toward the left rail's bottom corner.
+  n101.x = 250; n101.y = EMC_FRAME.rightBottomY; n101.labelSide = 'left';
+  n105.x = 250; n105.y = EMC_FRAME.rightBottomY - 45; n105.labelSide = 'right';
+
+  const loop = [cBotL, n107, n108, n109, n110, cTopL, n112, cTopR, ...rightRoomList, n100, n101, n105];
+  return { html: buildEMCLoop('EDGEWOOD MIDDLE — SPACE MAP (1ST FLOOR)', loop, 520), nodes: loop.filter(n => !n.isCorner) };
 }
 
-// Edgewood Middle, 2nd floor — same EMC_FRAME as the 1st floor, so the
-// outer shape reads as the same building. Left rail runs 205 through 217
-// (10 offices, versus the 1st floor's 3 — spread across the same rail
-// length), top cap is 218, right rail is 219 through 238. The bottom
-// cluster is four rooms, not two: Main Entrance sits below 238 (it's
-// outside, hence the dashed/muted styling), 201 (Front office) bridges
-// between Main Entrance and the Lobby area, 203 (Conference) sits directly
-// beneath the Lobby, and the Lobby itself closes the loop back to 205.
+// Edgewood Middle, 2nd floor — same top-line width and rail x-positions as
+// the 1st floor, so the outer shape reads as the same building; only the
+// stop count and the bottom cluster differ, per the real layout: the
+// corner sits below 205 (the rail's bottom room, same pattern as 107 on
+// the floor below), 218 sits on the horizontal top line, 201/Main Entrance
+// continue straight down the right rail past 238, and a corner to the
+// Lobby's right carries the path from Main Entrance over to the Lobby →
+// 203 → back to 205's corner.
 //
 // ASSUMPTION TO VERIFY: restroom rows are matched by looking for "2nd" or
 // "upper" in the space name, and "Lobby" / "Main entrance" are assumed to
-// be the exact space names used in All Spaces for those rooms — confirm
-// against the real sheet.
+// be the exact space names used in All Spaces for those rooms.
 function buildEMCUpperMap(emcData) {
   const rooms = (emcData && emcData.rooms) || [];
   if (!rooms.length) return { html: '', nodes: [] };
   const L = mapNodeLookup(rooms, 'upper');
-  const restrooms = rooms.filter(r => r.section === 'Restrooms' && /2nd|upper/i.test(r.space));
+  const restroomNodes = restroomSlots(rooms, /2nd|upper/i, 'upper');
+
+  const cBotL = corner(...EMC_FRAME.leftBottomCorner);
+  const cTopL = corner(...EMC_FRAME.leftTopCorner);
+  const cTopR = corner(...EMC_FRAME.rightTopCorner);
 
   const leftKeys = ['205','207','208','209','212','213','214','215','216','217'];
   const leftRail = leftKeys.map(k => L.byNumber(k)); // already bottom(205) to top(217)
-  const leftPts  = interpolate(EMC_FRAME.leftBottom, EMC_FRAME.leftTop, leftRail.length);
+  const leftPts  = interpolateBetween(EMC_FRAME.leftBottomCorner, EMC_FRAME.leftTopCorner, leftRail.length);
   leftRail.forEach((n, i) => { [n.x, n.y] = leftPts[i]; n.labelSide = 'left'; });
 
   const n218 = L.byNumber('218');
-  [n218.x, n218.y] = EMC_FRAME.topPeak; n218.labelSide = 'right';
+  n218.x = (EMC_FRAME.leftTopCorner[0] + EMC_FRAME.rightTopCorner[0]) / 2;
+  n218.y = EMC_FRAME.leftTopCorner[1];
+  n218.labelSide = 'right'; n218.labelOffset = { x: 0, y: -14, anchor: 'middle' };
 
   const n219 = L.byNumber('219'), n220 = L.byNumber('220'), n221 = L.byNumber('221');
-  const restroomNodes = restrooms.map(r => L.fromRoom(r));
   const n238 = L.byNumber('238');
-  const rightRail = [n219, n220, n221, ...restroomNodes, n238];
-  const rightPts  = interpolate(EMC_FRAME.rightTop, EMC_FRAME.rightBottom, rightRail.length);
-  rightRail.forEach((n, i) => { [n.x, n.y] = rightPts[i]; n.labelSide = 'right'; });
-
+  const n201 = L.byNumber('201', 'Front office');
   const nMain = L.bySpaceName('Main entrance', 'Main entrance');
-  const n201  = L.byNumber('201', 'Front office');
-  const n203  = L.byNumber('203', 'Conference room');
+  // 201 (front desk / Front office) rides the same right vertical line,
+  // between the cafeteria and Main Entrance — not a separate branch.
+  const rightRoomList = [n219, n220, n221, ...restroomNodes, n238, n201];
+  const rightRoomPts  = interpolateBetween(EMC_FRAME.rightTopCorner, [EMC_FRAME.rightTopCorner[0], EMC_FRAME.rightBottomY], rightRoomList.length);
+  rightRoomList.forEach((n, i) => { [n.x, n.y] = rightRoomPts[i]; n.labelSide = 'right'; });
+  nMain.x = EMC_FRAME.rightTopCorner[0]; nMain.y = EMC_FRAME.rightBottomY; nMain.labelSide = 'right';
+
+  // Corner to the Lobby's right, carrying the path from Main Entrance back
+  // toward the Lobby cluster.
+  const cRightOfLobby = corner(280, EMC_FRAME.rightBottomY);
+
   const nLobby = L.bySpaceName('Lobby');
+  nLobby.x = 240; nLobby.y = EMC_FRAME.rightBottomY - 20;
+  // Label placed above rather than beside — the corner, 203, and the
+  // closing run to 205 all sit close by on this side, so a side label
+  // would run into one of them.
+  nLobby.labelOffset = { x: 0, y: -14, anchor: 'middle' };
 
-  nMain.x = 340;  nMain.y = 440; nMain.labelSide = 'right'; // below 238, outside — the "large space"
-  n201.x  = 305;  n201.y  = 415; n201.labelSide  = 'left';  // bridges Main Entrance to the Lobby cluster
-  [n203.x, n203.y] = EMC_FRAME.dip; n203.labelSide = 'left';   // directly beneath the Lobby
-  [nLobby.x, nLobby.y] = EMC_FRAME.ret; nLobby.labelSide = 'right';
+  const n203 = L.byNumber('203', 'Conference room');
+  n203.x = 200; n203.y = EMC_FRAME.rightBottomY; n203.labelSide = 'left'; // on the path between the Lobby and 205's corner
 
-  const loop = [...leftRail, n218, ...rightRail, nMain, n201, n203, nLobby];
-  return { html: buildEMCLoop('EDGEWOOD MIDDLE — SPACE MAP (2ND FLOOR)', loop, 520), nodes: loop };
+  const loop = [cBotL, ...leftRail, cTopL, n218, cTopR, ...rightRoomList, nMain, cRightOfLobby, nLobby, n203];
+  return { html: buildEMCLoop('EDGEWOOD MIDDLE — SPACE MAP (2ND FLOOR)', loop, 520), nodes: loop.filter(n => !n.isCorner) };
 }
 
 // ── EMC map timeline (play/scrub through history) ───────────────────────────
@@ -1290,7 +1337,6 @@ function buildEMCRoomHistory(historyRows, roomNumbers) {
 
 function buildEMCTimelineControl() {
   return `<div class="progress-block">
-    <div class="progress-block-title">SPACE MAP HISTORY</div>
     <div style="display:flex;align-items:center;gap:12px">
       <button id="emcPlayBtn" aria-label="Play" style="padding:6px 12px;border-radius:var(--radius,6px);border:1px solid var(--border);background:transparent;cursor:pointer;flex-shrink:0">▶</button>
       <div id="emcSliderWrap" style="position:relative;flex:1">
