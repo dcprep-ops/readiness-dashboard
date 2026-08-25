@@ -1137,7 +1137,12 @@ function buildEMCLoop(title, loopNodes, viewW) {
   // the block is a narrower flex sibling instead (the two titles bled into
   // each other, which is what "stacking" was). This is a local title bar
   // scoped to its own block's width instead.
-  return `<div class="progress-block" style="flex:1 1 340px;min-width:0">
+  // FIXED: .progress-block's CSS gives every instance margin-top:32px
+  // except the actual :first-child of its parent — inside this flex row,
+  // that's only ever the left map. The right one kept its 32px push down,
+  // which is exactly the "right side a few pixels lower" you saw. Zeroing
+  // it explicitly here instead of leaning on :first-child fixes both.
+  return `<div class="progress-block" style="flex:1 1 340px;min-width:0;margin-top:0">
     <div style="font-size:11px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:#0C447C;background:#E6F1FB;padding:8px 12px;margin:0 0 14px;border-radius:6px">${title}</div>
     <svg viewBox="0 0 ${viewW} ${maxY}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
       <path d="${roundedPathD(pathPts, 20)}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
@@ -1173,12 +1178,24 @@ function interpolateBetween(p0, p1, n) {
 // they should always be present, not conditionally present. Any slot the
 // filter didn't find just renders blank (no data found) rather than
 // disappearing outright.
+// FIXED: the floor indicator ("1st floor - A", "2nd floor - B", etc.)
+// lives in the Room # column, not the Space name — the space name is just
+// "Girls restroom" / "Boys restroom" / "Staff restroom" with no floor info
+// in it at all. Matching against r.space (as before) could never work; the
+// location itself is intentionally never shown as a label (would be
+// confusing on a map already split by floor) — it's only used here to sort
+// each restroom onto the right floor.
 function restroomSlots(rooms, floorRegex, floorKey) {
-  const found = rooms.filter(r => r.section === 'Restrooms' && floorRegex.test(r.space));
-  const labels = ['Girls restroom', 'Boys restroom', 'Adult restroom'];
-  return labels.map((label, i) => {
-    if (found[i]) return { label: found[i].space, cls: mapRoomStatus(found[i]), domId: `mapdot-${floorKey}-restroom-${i}`, roomNumber: found[i].roomNumber || null };
-    return { label, cls: 'dot-blank', domId: `mapdot-${floorKey}-restroom-${i}`, roomNumber: null };
+  const TYPES = [
+    { match: /girls/i, label: 'Girls restroom' },
+    { match: /boys/i,  label: 'Boys restroom' },
+    { match: /staff/i, label: 'Staff restroom' }
+  ];
+  return TYPES.map((t, i) => {
+    const domId = `mapdot-${floorKey}-restroom-${i}`;
+    const r = rooms.find(rm => rm.section === 'Restrooms' && t.match.test(rm.space) && floorRegex.test(rm.roomNumber || ''));
+    if (!r) return { label: t.label, cls: 'dot-blank', domId, roomNumber: null };
+    return { label: r.space, cls: mapRoomStatus(r), domId, roomNumber: r.roomNumber || null };
   });
 }
 
@@ -1190,9 +1207,9 @@ function restroomSlots(rooms, floorRegex, floorKey) {
 // intentionally omitted — it's not a separate tracked space; the door
 // there opens into 110's room, not a distinct room of its own.
 //
-// ASSUMPTION TO VERIFY: restroom rows are matched by looking for "1st" or
-// "lower" in the space name — confirm that matches how they're actually
-// named in All Spaces.
+// Restroom matching against your real data is confirmed (see
+// restroomSlots' comment) — Lobby/Main entrance name matching on the 2nd
+// floor is still unverified.
 function buildEMCLowerMap(emcData) {
   const rooms = (emcData && emcData.rooms) || [];
   if (!rooms.length) return { html: '', nodes: [] };
@@ -1244,9 +1261,10 @@ function buildEMCLowerMap(emcData) {
 // Lobby's right carries the path from Main Entrance over to the Lobby →
 // 203 → back to 205's corner.
 //
-// ASSUMPTION TO VERIFY: restroom rows are matched by looking for "2nd" or
-// "upper" in the space name, and "Lobby" / "Main entrance" are assumed to
-// be the exact space names used in All Spaces for those rooms.
+// Restroom matching against your real data is confirmed (see
+// restroomSlots' comment). Still unverified: "Lobby" and "Main entrance"
+// are assumed to be the exact space names used in All Spaces for those
+// rooms.
 function buildEMCUpperMap(emcData) {
   const rooms = (emcData && emcData.rooms) || [];
   if (!rooms.length) return { html: '', nodes: [] };
@@ -1449,7 +1467,7 @@ async function loadCampusPanel(code) {
       // flex-wrap: side by side once there's room for both (≈700px+),
       // stacked below that — same breakpoint behavior as the rest of the
       // dashboard's responsive blocks.
-      emcHtml  = `<div style="display:flex;flex-wrap:wrap;gap:20px">${lower.html}${upper.html}</div>${buildEMCTimelineControl()}`;
+      emcHtml  = `<div style="display:flex;flex-wrap:wrap;gap:20px;margin-top:32px">${lower.html}${upper.html}</div>${buildEMCTimelineControl()}`;
       emcNodes = lower.nodes.concat(upper.nodes);
     }
     panel.innerHTML = `<div class="main">${buildCampusProgress(data.rooms)}${buildSectionedTables(data.rooms)}${emcHtml}</div>`;
