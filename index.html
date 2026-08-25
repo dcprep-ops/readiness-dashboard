@@ -603,6 +603,15 @@ async function fetchDailyWins() {
   return res.json();
 }
 
+// Single consolidated call for the Overall tab — replaces 9 separate requests
+// (6 campuses + history + snapshots + wins) with 1. The Apps Script side reads
+// All Spaces once (cached 60s) and buckets by campus server-side, instead of
+// this page asking it to re-read the whole sheet 6 times over.
+async function fetchOverallData() {
+  const res = await fetch(`${SCRIPT_URL}?view=overall`);
+  return res.json();
+}
+
 function buildTodaysWins(winsRows) {
   const now = Date.now();
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -963,8 +972,8 @@ function buildSpaceBurndownChart(historicalSeries, liveTotal) {
       <text x="${fdosX}" y="29" font-size="12" fill="#E5A810" text-anchor="middle" font-weight="700">SCHOOL</text>
 
       <polyline points="${idealPts.join(' ')}" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-dasharray="6,5"/>
-      <polyline points="${actualPts.join(' ')}" fill="none" stroke="#005E9E" stroke-width="3"/>
-      <circle cx="${todayX}" cy="${todayY}" r="5" fill="#005E9E"/>
+      <polyline id="actualLine" points="${actualPts.join(' ')}" fill="none" stroke="#005E9E" stroke-width="3"/>
+      <circle id="todayDot" cx="${todayX}" cy="${todayY}" r="5" fill="#005E9E" style="opacity:0"/>
 
       <text x="40" y="230" font-size="10" fill="#94a3b8" text-anchor="middle">Jul 30</text>
       <text x="${targetX}" y="230" font-size="10" fill="#64748b" text-anchor="middle" font-weight="600">Aug 18</text>
@@ -1026,6 +1035,102 @@ function buildSpaceCategoryChart(bySection, totalRemaining) {
   </div>`;
 }
 
+// ── EMC space map (subway-style dot layout) ────────────────────────────────
+// Generates a rounded-corner SVG path through a sequence of [x,y] points —
+// used for the left-side bent line below, so its corners read like a subway
+// map bend rather than a sharp joint.
+function roundedPathD(pts, radius) {
+  if (pts.length < 2) return '';
+  radius = radius || 14;
+  let d = `M ${pts[0][0]},${pts[0][1]} `;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [x0,y0] = pts[i-1], [x1,y1] = pts[i], [x2,y2] = pts[i+1];
+    const d1 = Math.hypot(x1-x0, y1-y0) || 1, d2 = Math.hypot(x2-x1, y2-y1) || 1;
+    const r = Math.min(radius, d1/2, d2/2);
+    const p1x = x1 - (x1-x0)/d1*r, p1y = y1 - (y1-y0)/d1*r;
+    const p2x = x1 + (x2-x1)/d2*r, p2y = y1 + (y2-y1)/d2*r;
+    d += `L ${p1x},${p1y} Q ${x1},${y1} ${p2x},${p2y} `;
+  }
+  const last = pts[pts.length-1];
+  d += `L ${last[0]},${last[1]}`;
+  return d;
+}
+
+// Edgewood Middle, 1st floor: right side is one straight vertical line
+// (112 → 135A → 100 in real sequence); left side bends through 111-110-109-108
+// down to 107, with 105 to 107's right, ending near 101 (which sits close to
+// 100, the right line's terminus) — per the layout spec worked out earlier.
+// Room numbers are matched against All Spaces' Room # column; anything not
+// found (e.g. 111, which isn't a tracked space) renders muted rather than
+// guessed at.
+//
+// ASSUMPTION TO VERIFY: restroom rows are matched by looking for "1st" or
+// "lower" in the space name (to pull just this floor's restrooms, not the
+// 2nd floor's) — confirm that matches how they're actually named in All
+// Spaces; if the text differs, restrooms just won't appear on the map rather
+// than showing wrong ones.
+function buildEMCMap(emcData) {
+  const rooms = (emcData && emcData.rooms) || [];
+  if (!rooms.length) return '';
+  const byRoom = {};
+  rooms.forEach(r => { if (r.roomNumber) byRoom[r.roomNumber] = r; });
+  const restrooms = rooms.filter(r => r.section === 'Restrooms' && /1st|lower/i.test(r.space));
+
+  function node(roomNumber, fallbackLabel) {
+    const r = byRoom[roomNumber];
+    if (!r) return { label: fallbackLabel || `Room ${roomNumber}`, cls: 'dot-blank' };
+    return { label: r.space + (r.roomNumber ? ` (${r.roomNumber})` : ''), cls: combinedSpaceStatus(r) };
+  }
+
+  const rightNodes = ['112','115','119','120','121'].map(k => node(k));
+  restrooms.forEach(r => rightNodes.push({ label: r.space, cls: combinedSpaceStatus(r) }));
+  ['135B','135A','100'].forEach(k => rightNodes.push(node(k)));
+
+  const leftNodes = ['111','110','109','108'].map(k => node(k, 'Not tracked'));
+  const n107 = node('107'), n105 = node('105'), n101 = node('101');
+
+  const RX = 340, rightYStart = 60, rightYStep = 38;
+  rightNodes.forEach((n, i) => { n.x = RX; n.y = rightYStart + i * rightYStep; });
+  const rightBottomY = rightNodes[rightNodes.length - 1].y;
+
+  const leftPts = [[200,100],[190,150],[180,200],[170,250]];
+  leftNodes.forEach((n, i) => { n.x = leftPts[i][0]; n.y = leftPts[i][1]; });
+  n107.x = 210; n107.y = 300;
+  n105.x = 270; n105.y = 335;
+  n101.x = 235; n101.y = rightBottomY - 6;
+
+  const leftPathPts = leftNodes.map(n => [n.x, n.y]).concat([[n107.x,n107.y],[n105.x,n105.y],[n101.x,n101.y]]);
+
+  const STATUS_COLOR = {'dot-ok':'var(--green)','dot-minor':'var(--yellow)','dot-bad':'var(--red)',
+    'dot-pending':'#378ADD','dot-blank':'#cbd5e1','dot-na':'#e2e8f0'};
+
+  function dotSvg(n, labelSide) {
+    const color = STATUS_COLOR[n.cls] || '#cbd5e1';
+    const textX = labelSide === 'right' ? n.x + 14 : n.x - 14;
+    return `<circle cx="${n.x}" cy="${n.y}" r="7" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+      <text x="${textX}" y="${n.y + 4}" font-size="11" fill="var(--text)" text-anchor="${labelSide === 'right' ? 'start' : 'end'}">${n.label}</text>`;
+  }
+
+  const rightDots = rightNodes.map(n => dotSvg(n, 'right')).join('');
+  const leftDots  = leftNodes.map(n => dotSvg(n, 'left')).join('')
+    + dotSvg(n107, 'left') + dotSvg(n105, 'right') + dotSvg(n101, 'left');
+
+  const topConnector    = `M ${leftNodes[0].x},${leftNodes[0].y} L ${rightNodes[0].x},${rightNodes[0].y}`;
+  const bottomConnector = `M ${n101.x},${n101.y} L ${RX},${rightBottomY}`;
+
+  return `<div class="progress-block">
+    <div class="progress-block-title">EDGEWOOD MIDDLE — SPACE MAP (1ST FLOOR)</div>
+    <svg viewBox="0 0 520 ${rightBottomY + 40}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
+      <path d="${topConnector}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      <path d="${roundedPathD(leftPathPts, 14)}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      <line x1="${RX}" y1="${rightNodes[0].y}" x2="${RX}" y2="${rightBottomY}" stroke="var(--border)" stroke-width="1.5"/>
+      <path d="${bottomConnector}" fill="none" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>
+      ${rightDots}
+      ${leftDots}
+    </svg>
+  </div>`;
+}
+
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
 // NOTE: previously cached indefinitely per session, meaning a long-open tab
@@ -1066,45 +1171,90 @@ async function loadOverall() {
   const el = document.getElementById('overall-main');
   el.innerHTML = loadingBlock('Loading all campuses…');
   try {
-    const allData = {};
-    const [_, historyData, snapshotData, winsData] = await Promise.all([
-      Promise.all(CAMPUSES.map(async c => {
-        try { allData[c.code] = await fetchCampus(c.code); }
-        catch(e) { allData[c.code] = {rooms:[], summary:{}}; }
-      })),
-      fetchReadinessHistory().catch(() => ({rows:[]})),
-      fetchDailySnapshots().catch(() => ({rows:[]})),
-      fetchDailyWins().catch(() => ({rows:[]})),
-    ]);
-    const { totalRemaining: totalSpaceRemaining, bySection: bySectionSpace } = computeSpaceRemaining(allData);
-    let historicalSeries = [];
-    try {
-      // If real snapshots already cover every business day so far, skip the
-      // (increasingly large, as the log grows) raw-history reconstruction
-      // entirely — no need to fetch or crunch data we're about to overwrite anyway.
-      const now = new Date();
-      now.setHours(0,0,0,0);
-      const lastDay = now < START_DATE ? 1 : countBusinessDays(START_DATE, now);
-      const snapshotDays = new Set((snapshotData.rows || []).map(s => {
-        const d = new Date(s.ts); d.setHours(0,0,0,0);
-        return d < START_DATE ? null : countBusinessDays(START_DATE, d);
-      }).filter(Boolean));
-      const fullyCovered = snapshotDays.size >= lastDay;
+    // ONE request instead of 9 (was: 6 campuses + history + snapshots + wins,
+    // each re-reading All Spaces from scratch). The Apps Script now reads All
+    // Spaces once, cached 60s, and buckets every campus server-side.
+    const overallData = await fetchOverallData();
 
-      const reconstructed = fullyCovered
-        ? Array.from({length: lastDay}, (_, i) => ({day: i+1, totalRemaining: 0}))
-        : buildHistoricalRemainingSeries(allData, historyData.rows || []);
-      historicalSeries = mergeWithSnapshots(reconstructed, snapshotData.rows || []);
-    } catch(e) { historicalSeries = []; }
+    const allData = {};
+    CAMPUSES.forEach(c => {
+      allData[c.code] = (overallData.campuses && overallData.campuses[c.code]) || {rooms:[], summary:{}};
+      // Warm the per-campus client cache too, so tapping into a campus tab
+      // right after landing on Overall doesn't trigger its own fetch.
+      _campusCache[c.code] = { data: allData[c.code], at: Date.now() };
+    });
+    const historyData  = overallData.history   || {rows:[]};
+    const snapshotData = overallData.snapshots || {rows:[]};
+    const winsData      = overallData.wins      || {rows:[]};
+
+    const { totalRemaining: totalSpaceRemaining, bySection: bySectionSpace } = computeSpaceRemaining(allData);
+
+    // Render what's cheap and already available right away — Today's Wins
+    // and the KPI summary don't need the historical reconstruction below,
+    // so there's no reason to make them wait on it.
     el.innerHTML = buildTodaysWins(winsData.rows || [])
       + buildOverall(allData)
-      + buildSpaceBurndownChart(historicalSeries, totalSpaceRemaining)
-      + buildSpaceCategoryChart(bySectionSpace, totalSpaceRemaining);
+      + '<div id="burndown-slot"></div>'
+      + '<div id="category-slot"></div>'
+      + '<div id="emc-map-slot"></div>';
+    document.getElementById('hdr-meta').textContent = `SY 2026–27 · ${overallData.generated || ''}`;
+
+    // The historical-series reconstruction (and the EMC map) run on the next
+    // frame, so the browser gets to paint the section above first instead of
+    // everything appearing at once after a single longer block.
+    requestAnimationFrame(() => {
+      let historicalSeries = [];
+      try {
+        // If real snapshots already cover every business day so far, skip the
+        // (increasingly large, as the log grows) raw-history reconstruction
+        // entirely — no need to crunch data we're about to overwrite anyway.
+        const now = new Date();
+        now.setHours(0,0,0,0);
+        const lastDay = now < START_DATE ? 1 : countBusinessDays(START_DATE, now);
+        const snapshotDays = new Set((snapshotData.rows || []).map(s => {
+          const d = new Date(s.ts); d.setHours(0,0,0,0);
+          return d < START_DATE ? null : countBusinessDays(START_DATE, d);
+        }).filter(Boolean));
+        const fullyCovered = snapshotDays.size >= lastDay;
+
+        const reconstructed = fullyCovered
+          ? Array.from({length: lastDay}, (_, i) => ({day: i+1, totalRemaining: 0}))
+          : buildHistoricalRemainingSeries(allData, historyData.rows || []);
+        historicalSeries = mergeWithSnapshots(reconstructed, snapshotData.rows || []);
+      } catch(e) { historicalSeries = []; }
+
+      document.getElementById('burndown-slot').outerHTML  = buildSpaceBurndownChart(historicalSeries, totalSpaceRemaining);
+      document.getElementById('category-slot').outerHTML  = buildSpaceCategoryChart(bySectionSpace, totalSpaceRemaining);
+      document.getElementById('emc-map-slot').outerHTML    = buildEMCMap(allData.EMC);
+      animateBurndownLine();
+    });
   } catch(e) {
     el.innerHTML = '<div class="empty-msg" style="color:var(--red)">Error loading data.</div>';
   } finally {
     const overlay = document.getElementById('app-loading-overlay');
     if (overlay) overlay.classList.add('hidden');
+  }
+}
+
+// Draws the burndown chart's "actual" line in from left to right on load,
+// instead of it just appearing fully formed. Classic SVG technique: measure
+// the path's real length, hide it behind its own dash gap, then animate the
+// gap closing.
+function animateBurndownLine() {
+  const line = document.getElementById('actualLine');
+  const dot  = document.getElementById('todayDot');
+  if (!line) return;
+  const len = line.getTotalLength();
+  line.style.strokeDasharray  = len;
+  line.style.strokeDashoffset = len;
+  // Force the browser to register the starting state before switching on
+  // the transition — otherwise it can jump straight to the end state.
+  line.getBoundingClientRect();
+  line.style.transition = 'stroke-dashoffset 1.1s ease-out';
+  line.style.strokeDashoffset = '0';
+  if (dot) {
+    dot.style.transition = 'opacity .3s ease-out';
+    setTimeout(() => { dot.style.opacity = '1'; }, 1000);
   }
 }
 
