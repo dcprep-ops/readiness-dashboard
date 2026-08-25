@@ -1079,11 +1079,13 @@ const MAP_STATUS_COLOR = {'dot-ok':'var(--green)','dot-minor':'var(--yellow)','d
 function mapDotSvg(n, labelSide) {
   const color = MAP_STATUS_COLOR[n.cls] || '#cbd5e1';
   const textX = labelSide === 'right' ? n.x + 14 : n.x - 14;
-  return `<circle cx="${n.x}" cy="${n.y}" r="7" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+  return `<circle id="${n.domId}" cx="${n.x}" cy="${n.y}" r="7" fill="${color}" stroke="#fff" stroke-width="1.5" style="transition:fill .3s"/>
     <text x="${textX}" y="${n.y + 4}" font-size="11" fill="var(--text)" text-anchor="${labelSide === 'right' ? 'start' : 'end'}">${n.label}</text>`;
 }
 
-function mapNodeLookup(rooms) {
+function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+
+function mapNodeLookup(rooms, floorKey) {
   const byRoom = {}, bySpace = {};
   rooms.forEach(r => {
     if (r.roomNumber) byRoom[r.roomNumber] = r;
@@ -1092,127 +1094,259 @@ function mapNodeLookup(rooms) {
   return {
     byNumber(roomNumber, fallbackLabel) {
       const r = byRoom[roomNumber];
-      if (!r) return { label: fallbackLabel || `Room ${roomNumber}`, cls: 'dot-blank' };
-      return { label: r.space + (r.roomNumber ? ` (${r.roomNumber})` : ''), cls: mapRoomStatus(r) };
+      const domId = `mapdot-${floorKey}-${slug(roomNumber)}`;
+      if (!r) return { label: fallbackLabel || `Room ${roomNumber}`, cls: 'dot-blank', domId, roomNumber };
+      return { label: r.space + (r.roomNumber ? ` (${r.roomNumber})` : ''), cls: mapRoomStatus(r), domId, roomNumber };
     },
     bySpaceName(name, fallbackLabel) {
       const r = bySpace[name.toLowerCase()];
-      if (!r) return { label: fallbackLabel || name, cls: 'dot-blank' };
-      return { label: r.space, cls: mapRoomStatus(r) };
+      const domId = `mapdot-${floorKey}-${slug(name)}`;
+      if (!r) return { label: fallbackLabel || name, cls: 'dot-blank', domId, roomNumber: null };
+      return { label: r.space, cls: mapRoomStatus(r), domId, roomNumber: r.roomNumber || null };
+    },
+    fromRoom(r) {
+      const key = r.roomNumber || slug(r.space);
+      return { label: r.space, cls: mapRoomStatus(r), domId: `mapdot-${floorKey}-${slug(key)}`, roomNumber: r.roomNumber || null };
     }
   };
 }
 
-// Edgewood Middle, 1st floor: right side is one straight vertical line
-// (112 → 135A → 100 in real sequence); left side bends through 110-109-108
-// down to 107, with 105 to 107's right, ending near 101 (which sits close to
-// 100, the right line's terminus) — per the layout spec worked out earlier.
-// Room 111 is intentionally omitted — it's not a separate tracked space;
-// the door there opens into 110's room, not a distinct room of its own.
-//
-// ASSUMPTION TO VERIFY: restroom rows are matched by looking for "1st" or
-// "lower" in the space name (to pull just this floor's restrooms, not the
-// 2nd floor's) — confirm that matches how they're actually named in All
-// Spaces; if the text differs, restrooms just won't appear on the map rather
-// than showing wrong ones.
-function buildEMCLowerMap(emcData) {
-  const rooms = (emcData && emcData.rooms) || [];
-  if (!rooms.length) return '';
-  const L = mapNodeLookup(rooms);
-  const restrooms = rooms.filter(r => r.section === 'Restrooms' && /1st|lower/i.test(r.space));
-
-  const rightNodes = ['112','115','119','120','121'].map(k => L.byNumber(k));
-  restrooms.forEach(r => rightNodes.push({ label: r.space, cls: mapRoomStatus(r) }));
-  ['135B','135A','100'].forEach(k => rightNodes.push(L.byNumber(k)));
-
-  const leftNodes = ['110','109','108'].map(k => L.byNumber(k));
-  const n107 = L.byNumber('107'), n105 = L.byNumber('105'), n101 = L.byNumber('101');
-
-  const RX = 340, rightYStart = 60, rightYStep = 38;
-  rightNodes.forEach((n, i) => { n.x = RX; n.y = rightYStart + i * rightYStep; });
-  const rightBottomY = rightNodes[rightNodes.length - 1].y;
-
-  const leftPts = [[210,100],[198,150],[186,200]];
-  leftNodes.forEach((n, i) => { n.x = leftPts[i][0]; n.y = leftPts[i][1]; });
-  n107.x = 210; n107.y = 250;
-  n105.x = 270; n105.y = 288;
-  n101.x = 235; n101.y = rightBottomY - 6;
-
-  const leftPathPts = leftNodes.map(n => [n.x, n.y]).concat([[n107.x,n107.y],[n105.x,n105.y],[n101.x,n101.y]]);
-
-  const rightDots = rightNodes.map(n => mapDotSvg(n, 'right')).join('');
-  const leftDots  = leftNodes.map(n => mapDotSvg(n, 'left')).join('')
-    + mapDotSvg(n107, 'left') + mapDotSvg(n105, 'right') + mapDotSvg(n101, 'left');
-
-  // No connector between the two lines at top — 112 is the right line's own
-  // first point, not a shared apex; the left line is its own independent
-  // bent line, per the layout spec. The only place the two lines relate
-  // spatially is at the bottom, where 101 and 100 sit close together —
-  // shown with a light dashed connector rather than treating them as the
-  // same line.
-  const bottomConnector = `M ${n101.x},${n101.y} L ${RX},${rightBottomY}`;
-
+// Both EMC floor maps are drawn as ONE continuous closed loop — not two
+// separate lines joined at a corner. The loop walks the real room sequence
+// around the building (up one side, across the top, down the other, then
+// back along the bottom), so every bend — including at 112 (1st floor) and
+// 218 (2nd floor) — is just another rounded waypoint on the same path, the
+// way a subway line curves through a station rather than stopping there.
+function buildEMCLoop(title, loopNodes, viewW) {
+  const maxY = Math.max(...loopNodes.map(n => n.y)) + 40;
+  const pathPts = loopNodes.map(n => [n.x, n.y]).concat([[loopNodes[0].x, loopNodes[0].y]]); // close back to start
+  const labelSideFor = n => n.labelSide || 'right';
+  const dots = loopNodes.map(n => mapDotSvg(n, labelSideFor(n))).join('');
   return `<div class="progress-block">
-    <div class="progress-block-title">EDGEWOOD MIDDLE — SPACE MAP (1ST FLOOR)</div>
-    <svg viewBox="0 0 520 ${rightBottomY + 40}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
-      <path d="${roundedPathD(leftPathPts, 14)}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
-      <line x1="${RX}" y1="${rightNodes[0].y}" x2="${RX}" y2="${rightBottomY}" stroke="var(--border)" stroke-width="1.5"/>
-      <path d="${bottomConnector}" fill="none" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>
-      ${rightDots}
-      ${leftDots}
+    <div class="progress-block-title">${title}</div>
+    <svg viewBox="0 0 ${viewW} ${maxY}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
+      <path d="${roundedPathD(pathPts, 16)}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      ${dots}
     </svg>
   </div>`;
 }
 
-// Edgewood Middle, 2nd floor: mirrors the 1st floor's layout language —
-// right side a straight line (218 → 238), left side a bent line (217 down
-// through 205), bending at the bottom toward the Lobby (matching 107→105's
-// role on the floor below) and ending near 202, which sits close to 238 —
-// same "near each other but not one line" relationship as 101/100 below.
-// UNVERIFIED, same as the 1st floor map: restroom name matching (this time
-// "2nd"/"upper") and that "Lobby" is the exact space name used in All
-// Spaces for that room.
+// Edgewood Middle, 1st floor. Loop order: 108 → 109 → 110 → 112 (top) →
+// 115 → 119 → 120 → 121 → restrooms → 135B → 135A → 100 → 101 → 105 → 107
+// → back to 108. The bottom four (100, 101, 105, 107) form a loose
+// rectangle — 101 directly below 105, 100 to 101's right (closing toward
+// the right line), 107 to 105's left (closing toward the left line).
+// Room 111 is intentionally omitted — it's not a separate tracked space;
+// the door there opens into 110's room, not a distinct room of its own.
+//
+// ASSUMPTION TO VERIFY: restroom rows are matched by looking for "1st" or
+// "lower" in the space name — confirm that matches how they're actually
+// named in All Spaces; if the text differs, restrooms just won't appear.
+function buildEMCLowerMap(emcData) {
+  const rooms = (emcData && emcData.rooms) || [];
+  if (!rooms.length) return { html: '', nodes: [] };
+  const L = mapNodeLookup(rooms, 'lower');
+  const restrooms = rooms.filter(r => r.section === 'Restrooms' && /1st|lower/i.test(r.space));
+
+  const n108 = L.byNumber('108'), n109 = L.byNumber('109'), n110 = L.byNumber('110');
+  const n112 = L.byNumber('112');
+  const n115 = L.byNumber('115'), n119 = L.byNumber('119'), n120 = L.byNumber('120'), n121 = L.byNumber('121');
+  const restroomNodes = restrooms.map(r => L.fromRoom(r));
+  const n135B = L.byNumber('135B'), n135A = L.byNumber('135A');
+  const n100 = L.byNumber('100'), n101 = L.byNumber('101'), n105 = L.byNumber('105'), n107 = L.byNumber('107');
+
+  n108.x = 170; n108.y = 300;
+  n109.x = 180; n109.y = 250;
+  n110.x = 190; n110.y = 200;
+  n112.x = 280; n112.y = 55;
+  n115.x = 340; n115.y = 100;
+  n119.x = 340; n119.y = 138;
+  n120.x = 340; n120.y = 176;
+  n121.x = 340; n121.y = 214;
+  restroomNodes.forEach((n, i) => { n.x = 340; n.y = 252 + i * 36; });
+  const afterRestroomsY = 252 + restroomNodes.length * 36;
+  n135B.x = 340; n135B.y = afterRestroomsY;
+  n135A.x = 340; n135A.y = afterRestroomsY + 38;
+  n100.x  = 340; n100.y  = afterRestroomsY + 76;
+  n101.x = 270; n101.y = n100.y;
+  n105.x = 270; n105.y = n100.y - 40;
+  n107.x = 200; n107.y = n105.y;
+
+  n108.labelSide = 'left'; n109.labelSide = 'left'; n110.labelSide = 'left';
+  n112.labelSide = 'right';
+  n115.labelSide = n119.labelSide = n120.labelSide = n121.labelSide = 'right';
+  restroomNodes.forEach(n => n.labelSide = 'right');
+  n135B.labelSide = n135A.labelSide = n100.labelSide = 'right';
+  n101.labelSide = 'left'; n105.labelSide = 'right'; n107.labelSide = 'left';
+
+  const loop = [n108, n109, n110, n112, n115, n119, n120, n121, ...restroomNodes, n135B, n135A, n100, n101, n105, n107];
+  return { html: buildEMCLoop('EDGEWOOD MIDDLE — SPACE MAP (1ST FLOOR)', loop, 520), nodes: loop };
+}
+
+// Edgewood Middle, 2nd floor — mirrors the 1st floor's loop language.
+// Loop order: 205 → 207 → 208 → 209 → 212 → 213 → 214 → 215 → 216 → 217 →
+// 218 (top) → 219 → 220 → 221 → restrooms → 238 → 203 (Conference) → Lobby
+// → 201 (Front office) → back to 205. Same bottom-rectangle idea as the
+// floor below: Lobby above 203, 201 to Lobby's left (closing toward the
+// left line), 238 to 203's right (closing toward the right line).
+//
+// FIXED: this previously used room number 202 for Conference, which
+// isn't a real room in the current data — the actual Conference room is
+// 203. Room 201 (Front office) was also missing entirely; both are
+// included now.
+//
+// ASSUMPTION TO VERIFY: restroom rows are matched by looking for "2nd" or
+// "upper" in the space name, and "Lobby" is assumed to be the exact space
+// name used in All Spaces for that room — confirm both against the real
+// sheet.
 function buildEMCUpperMap(emcData) {
   const rooms = (emcData && emcData.rooms) || [];
-  if (!rooms.length) return '';
-  const L = mapNodeLookup(rooms);
+  if (!rooms.length) return { html: '', nodes: [] };
+  const L = mapNodeLookup(rooms, 'upper');
   const restrooms = rooms.filter(r => r.section === 'Restrooms' && /2nd|upper/i.test(r.space));
 
-  const rightNodes = ['218','219','220','221'].map(k => L.byNumber(k));
-  restrooms.forEach(r => rightNodes.push({ label: r.space, cls: mapRoomStatus(r) }));
-  rightNodes.push(L.byNumber('238'));
+  const leftKeys = ['205','207','208','209','212','213','214','215','216','217'];
+  const leftNodes = leftKeys.map(k => L.byNumber(k)).reverse(); // walk the loop bottom-to-top: 205 first
+  const n218 = L.byNumber('218');
+  const n219 = L.byNumber('219'), n220 = L.byNumber('220'), n221 = L.byNumber('221');
+  const restroomNodes = restrooms.map(r => L.fromRoom(r));
+  const n238 = L.byNumber('238');
+  const n203 = L.byNumber('203', 'Conference room');
+  const nLobby = L.bySpaceName('Lobby');
+  const n201 = L.byNumber('201', 'Front office');
 
-  const leftKeys = ['217','216','215','214','213','212','209','208','207','205'];
-  const leftNodes = leftKeys.map(k => L.byNumber(k));
-  const nLobby = L.bySpaceName('Lobby'), n202 = L.byNumber('202');
+  leftNodes.forEach((n, i) => { n.x = 170 + i * 8; n.y = 380 - i * 36; n.labelSide = 'left'; });
+  n218.x = 300; n218.y = 40; n218.labelSide = 'right';
+  n219.x = 340; n219.y = 85;  n219.labelSide = 'right';
+  n220.x = 340; n220.y = 123; n220.labelSide = 'right';
+  n221.x = 340; n221.y = 161; n221.labelSide = 'right';
+  restroomNodes.forEach((n, i) => { n.x = 340; n.y = 199 + i * 36; n.labelSide = 'right'; });
+  const afterRestroomsY = 199 + restroomNodes.length * 36;
+  n238.x = 340; n238.y = afterRestroomsY; n238.labelSide = 'right';
+  n203.x = 270; n203.y = n238.y;        n203.labelSide = 'left';
+  nLobby.x = 270; nLobby.y = n238.y - 40; nLobby.labelSide = 'right';
+  n201.x = 200; n201.y = nLobby.y;       n201.labelSide = 'left';
 
-  const RX = 340, rightYStart = 60, rightYStep = 38;
-  rightNodes.forEach((n, i) => { n.x = RX; n.y = rightYStart + i * rightYStep; });
-  const rightBottomY = rightNodes[rightNodes.length - 1].y;
+  const loop = [...leftNodes, n218, n219, n220, n221, ...restroomNodes, n238, n203, nLobby, n201];
+  return { html: buildEMCLoop('EDGEWOOD MIDDLE — SPACE MAP (2ND FLOOR)', loop, 520), nodes: loop };
+}
 
-  leftNodes.forEach((n, i) => { n.x = 220 - i * 6; n.y = 60 + i * 30; });
-  const lastLeft = leftNodes[leftNodes.length - 1];
-  nLobby.x = lastLeft.x + 55; nLobby.y = lastLeft.y + 40;
-  n202.x = lastLeft.x - 10;   n202.y = rightBottomY - 6;
+// ── EMC map timeline (play/scrub through history) ───────────────────────────
+// Reconstructs each tracked room's status for every business day from
+// START_DATE to today, from the same raw Ops Readiness Log rows the
+// burndown chart uses — same honesty caveat as everywhere else this data
+// is used: only Ops (SDO) has real history, so past days reflect the Ops
+// track only, not Tech. "Today" on the slider therefore intentionally
+// matches that same Ops-only reconstruction (not the live Ops+Tech combined
+// color the map shows before you touch the slider), so scrubbing doesn't
+// jump between two different definitions of "current."
+function buildEMCRoomHistory(historyRows, roomNumbers) {
+  const byRoomKey = {};
+  (historyRows || []).forEach(r => {
+    if (r.campus !== 'EMC' || !r.room || !r.assessment) return;
+    if (!byRoomKey[r.room]) byRoomKey[r.room] = [];
+    byRoomKey[r.room].push({ ts: r.ts, assessment: r.assessment });
+  });
+  Object.keys(byRoomKey).forEach(k => byRoomKey[k].sort((a,b) => a.ts - b.ts));
 
-  const leftPathPts = leftNodes.map(n => [n.x, n.y]).concat([[nLobby.x,nLobby.y],[n202.x,n202.y]]);
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const lastDay = now < START_DATE ? 1 : countBusinessDays(START_DATE, now);
 
-  const rightDots = rightNodes.map(n => mapDotSvg(n, 'right')).join('');
-  const leftDots  = leftNodes.map(n => mapDotSvg(n, 'left')).join('')
-    + mapDotSvg(nLobby, 'right') + mapDotSvg(n202, 'left');
+  const series = []; // series[dayIndex] = { roomNumber: dotClass }
+  for (let day = 1; day <= lastDay; day++) {
+    const cutoff = businessDayToDate(START_DATE, day).getTime() + 24*60*60*1000 - 1;
+    const dayStatus = {};
+    roomNumbers.forEach(rn => {
+      const subs = byRoomKey[rn] || [];
+      let latest = null;
+      for (let i = subs.length - 1; i >= 0; i--) {
+        if (subs[i].ts <= cutoff) { latest = subs[i]; break; }
+      }
+      dayStatus[rn] = latest ? dotClass(latest.assessment) : 'dot-blank';
+    });
+    series.push(dayStatus);
+  }
+  return series;
+}
 
-  const bottomConnector = `M ${n202.x},${n202.y} L ${RX},${rightBottomY}`;
-
+function buildEMCTimelineControl() {
   return `<div class="progress-block">
-    <div class="progress-block-title">EDGEWOOD MIDDLE — SPACE MAP (2ND FLOOR)</div>
-    <svg viewBox="0 0 520 ${rightBottomY + 40}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
-      <path d="${roundedPathD(leftPathPts, 14)}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
-      <line x1="${RX}" y1="${rightNodes[0].y}" x2="${RX}" y2="${rightBottomY}" stroke="var(--border)" stroke-width="1.5"/>
-      <path d="${bottomConnector}" fill="none" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3"/>
-      ${rightDots}
-      ${leftDots}
-    </svg>
+    <div class="progress-block-title">SPACE MAP HISTORY</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button id="emcPlayBtn" aria-label="Play" style="padding:6px 12px;border-radius:var(--radius,6px);border:1px solid var(--border);background:transparent;cursor:pointer;flex-shrink:0">▶</button>
+      <div id="emcSliderWrap" style="position:relative;flex:1">
+        <input type="range" id="emcDaySlider" min="0" max="0" step="1" value="0" style="width:100%">
+        <div id="emcDayLabel" style="position:absolute;top:20px;font-size:11px;color:var(--muted);white-space:nowrap;transform:translateX(-50%)"></div>
+      </div>
+    </div>
+    <div style="height:18px"></div>
   </div>`;
+}
+
+// Wires up the slider/play control against both floor maps' dot nodes.
+// Only nodes with a real roomNumber can be animated (restrooms/Lobby have
+// no clean history key and just stay at whatever their live status was
+// when the panel loaded).
+function initEMCTimeline(historyRows, allNodes) {
+  const trackable = allNodes.filter(n => n.roomNumber);
+  const roomNumbers = trackable.map(n => n.roomNumber);
+  const series = buildEMCRoomHistory(historyRows, roomNumbers);
+  const slider = document.getElementById('emcDaySlider');
+  const label  = document.getElementById('emcDayLabel');
+  const playBtn = document.getElementById('emcPlayBtn');
+  if (!slider || !series.length) return;
+
+  slider.max = series.length - 1;
+  slider.value = series.length - 1;
+  let playing = false, timer = null;
+
+  // Positions the date label directly beneath the slider's thumb — thumbs
+  // sit inset from the track's true edges by about half the thumb width,
+  // so a plain percentage-of-width would drift outward at either end.
+  function positionLabel() {
+    const pct = series.length > 1 ? slider.value / (series.length - 1) : 0;
+    const thumbInset = 8; // px, roughly half a typical thumb width
+    const trackW = slider.offsetWidth - thumbInset * 2;
+    label.style.left = `${thumbInset + pct * trackW}px`;
+  }
+
+  function render(dayIdx) {
+    const dayStatus = series[dayIdx];
+    trackable.forEach(n => {
+      const el = document.getElementById(n.domId);
+      if (!el) return;
+      const cls = dayStatus[n.roomNumber] || 'dot-blank';
+      el.setAttribute('fill', MAP_STATUS_COLOR[cls] || '#cbd5e1');
+    });
+    const d = businessDayToDate(START_DATE, dayIdx + 1);
+    label.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    positionLabel();
+  }
+
+  slider.addEventListener('input', e => {
+    render(parseInt(e.target.value, 10));
+    if (playing) togglePlay();
+  });
+  window.addEventListener('resize', positionLabel);
+
+  function togglePlay() {
+    playing = !playing;
+    playBtn.textContent = playing ? '⏸' : '▶';
+    if (playing) {
+      timer = setInterval(() => {
+        let v = parseInt(slider.value, 10) + 1;
+        if (v > series.length - 1) v = 0;
+        slider.value = v;
+        render(v);
+      }, 600);
+    } else {
+      clearInterval(timer);
+    }
+  }
+  playBtn.addEventListener('click', togglePlay);
+
+  render(series.length - 1);
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
@@ -1244,8 +1378,22 @@ async function loadCampusPanel(code) {
       panel.innerHTML = '<div class="main"><div class="empty-msg">No submissions yet for ' + code + '.</div></div>';
       return;
     }
-    panel.innerHTML = `<div class="main">${buildCampusProgress(data.rooms)}${buildSectionedTables(data.rooms)}${code === 'EMC' ? buildEMCLowerMap(data) + buildEMCUpperMap(data) : ''}</div>`;
+    let emcHtml = '', emcNodes = [];
+    if (code === 'EMC') {
+      const lower = buildEMCLowerMap(data);
+      const upper = buildEMCUpperMap(data);
+      emcHtml  = lower.html + upper.html + buildEMCTimelineControl();
+      emcNodes = lower.nodes.concat(upper.nodes);
+    }
+    panel.innerHTML = `<div class="main">${buildCampusProgress(data.rooms)}${buildSectionedTables(data.rooms)}${emcHtml}</div>`;
     document.getElementById('hdr-meta').textContent = `SY 2026–27 · ${data.generated || ''}`;
+
+    if (code === 'EMC') {
+      // Fetched after the maps render (not blocking the initial paint) —
+      // dots already show today's live combined status; the slider then
+      // takes over once history is in.
+      fetchReadinessHistory().then(h => initEMCTimeline(h.rows || [], emcNodes)).catch(() => {});
+    }
   } catch(e) {
     panel.innerHTML = `<div class="main"><div class="empty-msg" style="color:var(--red)">Error loading ${code} data. Check the Apps Script URL.</div></div>`;
   }
