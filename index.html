@@ -595,7 +595,7 @@ function buildOverall(allData) {
   const spaceP = networkSpacePcts();
   let spaceBarHtml = '';
   if (spaceP) {
-    spaceBarHtml = `<div class="kpi-card" style="display:flex;flex-direction:column;align-items:center">
+    spaceBarHtml = `<div class="kpi-card" style="display:flex;flex-direction:column;align-items:center;flex:1 1 220px">
       ${buildLiquidCircle(spaceP.ok, spaceP.minor, 'Total spaces ready')}
     </div>`;
   }
@@ -603,7 +603,7 @@ function buildOverall(allData) {
   const priorityP = networkPrioritySpacePcts();
   let priorityBarHtml = '';
   if (priorityP) {
-    priorityBarHtml = `<div class="kpi-card" style="display:flex;flex-direction:column;align-items:center">
+    priorityBarHtml = `<div class="kpi-card" style="display:flex;flex-direction:column;align-items:center;flex:1 1 220px">
       ${buildLiquidCircle(priorityP.ok, priorityP.minor, 'Priority spaces ready', 'Classrooms · Shared Student Spaces · Restrooms · Common Spaces')}
     </div>`;
   }
@@ -613,8 +613,10 @@ function buildOverall(allData) {
 
   return `
     <div class="net-summary">
-      ${spaceBarHtml}
-      ${priorityBarHtml}
+      <div style="display:flex;flex-wrap:wrap;gap:16px">
+        ${spaceBarHtml}
+        ${priorityBarHtml}
+      </div>
       <div class="signoffs-box">
         <div class="signoffs-box-title">Signoffs</div>
         ${cardsHtml}
