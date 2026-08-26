@@ -11,6 +11,7 @@
 <meta property="og:description" content="DC Prep BOY Space Readiness Dashboard — SY 2026–27">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="share.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2/dist/tabler-icons.min.css">
 <style>
 :root{
   --blue:#005E9E;--blue-web:#0083C4;--gold:#E5A810;
@@ -75,6 +76,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .status-bad{background:var(--red-tint);color:var(--red)}
 .space-name.cleared{color:#B8C4D0;font-weight:400}
 .row-note{font-size:12px;color:#64748b;margin-top:2px;line-height:1.4}
+
+/* ── bucketed status squares (alternate to the sectioned table, AMC) ── */
+.sq-bucket{margin:0 0 26px}
+.sq-bucket-hdr{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.sq-bucket-count{color:var(--muted);font-weight:400}
+.sq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.flip-card{perspective:600px;aspect-ratio:1/1;cursor:pointer}
+.flip-inner{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d}
+.flip-card.flipped .flip-inner{transform:rotateY(180deg)}
+.flip-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:8px;padding:6px 8px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start}
+.flip-back{transform:rotateY(180deg);background:var(--card);border:0.5px solid var(--border);color:var(--muted);justify-content:center;align-items:center;text-align:center}
+.sq-badge{position:absolute;top:5px;right:5px;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.sq-badge i{font-size:10px}
+.sq-type-icon{font-size:13px;opacity:.85;margin-bottom:2px}
+.sq-name{font-size:9px;line-height:1.15;font-weight:500}
+.sq-back-text{font-size:9px;line-height:1.35;padding:0 4px}
 
 /* ── main ── */
 .main{max-width:800px;margin:0 auto;padding:16px 20px 40px}
@@ -435,6 +452,117 @@ function toggleRoomCard(el) {
   const wasOpen = el.classList.contains('open');
   stack.querySelectorAll('.room-card.open').forEach(c => c.classList.remove('open'));
   if (!wasOpen) el.classList.add('open');
+}
+
+// ── Bucketed status squares (AMC alternate view) ────────────────────────────
+// Classrooms at AMC are named after colleges — background color identifies
+// the college, so status can't also live in the background the way it does
+// in the sectioned table. Instead each room's status determines which bucket
+// it's grouped under (mirrors the BOY sort order used elsewhere: Not Ready →
+// Not Yet Assessed → Pending → Minor → Cleared, with N/A last), and a small
+// white badge in the corner carries the per-room status on top of that.
+// Colors sourced from the dc-prep-classroom-logos skill's colors.md (each
+// school's own official primary color; internal-use-only, not for
+// public-facing material). Text colors are picked for WCAG contrast against
+// the background, preferring a school's own secondary color where it still
+// passes, falling back to plain white/near-black otherwise. Any classroom
+// name that doesn't match falls back to DC Prep blue rather than guessing.
+const COLLEGE_COLORS = {
+  'american':          {bg:'#143D8D', text:'#fff'},
+  'gallaudet':          {bg:'#0C2950', text:'#fff'},
+  'george mason':       {bg:'#006633', text:'#fff'},
+  'boston college':     {bg:'#98002E', text:'#fff'},
+  'johns hopkins':      {bg:'#002D72', text:'#fff'},
+  'syracuse':           {bg:'#F76900', text:'#000E54'},
+  'williams':           {bg:'#5F259F', text:'#fff'},
+  'northwestern':       {bg:'#4E2A84', text:'#fff'},
+  'chicago':            {bg:'#800000', text:'#fff'},
+  'michigan':           {bg:'#FFCB05', text:'#00274C'},
+  'gonzaga':            {bg:'#041E42', text:'#fff'},
+  'oregon':             {bg:'#007030', text:'#fff'},
+  'pepperdine':         {bg:'#00205C', text:'#fff'},
+  'morehouse':          {bg:'#8B2433', text:'#fff'},
+  'spelman':            {bg:'#92C1E9', text:'#0c2f4a'},
+  'xavier':             {bg:'#FFC72C', text:'#1a1a1a'},
+  'cornell':            {bg:'#B31B1B', text:'#fff'},
+  'dartmouth':          {bg:'#00693E', text:'#fff'},
+  'penn':               {bg:'#990000', text:'#fff'},
+  'george washington':  {bg:'#033C5A', text:'#fff'},
+  'georgetown':         {bg:'#041E42', text:'#fff'},
+  'howard':             {bg:'#003A63', text:'#fff'},
+  'maryland':           {bg:'#CE1126', text:'#fff'},
+  'chapel hill':        {bg:'#4B9CD3', text:'#13294B'},
+  'virginia':           {bg:'#E57200', text:'#1a1a1a'},
+  'famu':               {bg:'#EE7624', text:'#1a1a1a'},
+  'hampton':            {bg:'#004ADD', text:'#fff'},
+  'tuskegee':           {bg:'#A32035', text:'#fff'},
+  'princeton':          {bg:'#E87722', text:'#1a1a1a'},
+  'stanford':           {bg:'#8C1515', text:'#fff'},
+  'harvard':            {bg:'#A51C30', text:'#fff'},
+  'yale':               {bg:'#00356B', text:'#fff'},
+};
+const COLLEGE_DEFAULT = {bg:'var(--blue)', text:'#fff'};
+function collegeColor(spaceName) {
+  const key = (spaceName || '').toLowerCase();
+  const match = Object.keys(COLLEGE_COLORS).find(k => key.includes(k));
+  return match ? COLLEGE_COLORS[match] : COLLEGE_DEFAULT;
+}
+
+const SQ_BUCKETS = [
+  {cls:'dot-bad',     label:'Not ready',         icon:'ti-x',              color:'var(--red)'},
+  {cls:'dot-blank',   label:'Not yet assessed',  icon:'ti-clock',          color:'var(--muted)'},
+  {cls:'dot-pending', label:'Pending signoff',   icon:'ti-hourglass',      color:'#378ADD'},
+  {cls:'dot-minor',   label:'Minor items',       icon:'ti-alert-triangle', color:'var(--yellow-text)'},
+  {cls:'dot-ok',      label:'Ready',             icon:'ti-check',         color:'var(--green)'},
+  {cls:'dot-na',      label:'N/A',               icon:'ti-minus',         color:'var(--muted)'},
+];
+
+function toggleFlip(el) {
+  el.classList.toggle('flipped');
+}
+
+function buildBucketedSquares(rooms) {
+  const groups = {};
+  rooms.forEach(r => {
+    const cls = mapRoomStatus(r);
+    if (!groups[cls]) groups[cls] = [];
+    groups[cls].push(r);
+  });
+
+  let html = '';
+  SQ_BUCKETS.forEach(b => {
+    const list = groups[b.cls];
+    if (!list || !list.length) return;
+    html += `<div class="sq-bucket">
+      <div class="sq-bucket-hdr" style="color:${b.color}"><i class="ti ${b.icon}" aria-hidden="true"></i>${b.label} <span class="sq-bucket-count">(${list.length})</span></div>
+      <div class="sq-grid">`;
+    list.forEach(r => {
+      const isClassroom = r.section === 'Classrooms';
+      const typeIcon = SECTION_ICON[r.section] || 'ti-door';
+      const label = r.space + (r.roomNumber ? ` (${r.roomNumber})` : '');
+      const opsText = r.SDO ? r.SDO.assessment : 'Not yet assessed';
+      const techText = r.tech ? r.tech.assessment : 'Not yet assessed';
+      let tileStyle, badgeStyle;
+      if (isClassroom) {
+        const col = collegeColor(r.space);
+        tileStyle = `background:${col.bg};color:${col.text}`;
+        badgeStyle = 'background:rgba(255,255,255,.95)';
+      } else {
+        tileStyle = 'background:var(--bg);border:0.5px solid var(--border);color:var(--text)';
+        badgeStyle = 'background:#fff;border:0.5px solid var(--border)';
+      }
+      html += `<div class="flip-card" onclick="toggleFlip(this)"><div class="flip-inner">
+        <div class="flip-face" style="${tileStyle}">
+          <div class="sq-badge" style="${badgeStyle}"><i class="ti ${b.icon}" style="color:${b.color}" aria-hidden="true"></i></div>
+          <i class="ti ${typeIcon} sq-type-icon" aria-hidden="true"></i>
+          <span class="sq-name">${label}</span>
+        </div>
+        <div class="flip-face flip-back"><span class="sq-back-text">Ops: ${opsText}<br>Tech: ${techText}${r.notes ? '<br>' + r.notes : ''}</span></div>
+      </div></div>`;
+    });
+    html += `</div></div>`;
+  });
+  return html || '<div class="empty-msg">No spaces found for this campus.</div>';
 }
 
 function buildEECViewToggle() {
@@ -1595,13 +1723,14 @@ async function loadCampusPanel(code) {
 
     let bodyHtml;
     if (code === 'EEC') {
-      // Alternate view, not a companion to a floor plan — toggling swaps
-      // which one is visible; both are rendered up front so switching is
-      // instant rather than re-fetching.
-      bodyHtml = buildCampusProgress(data.rooms)
-        + buildEECViewToggle()
-        + `<div id="eecTableWrap">${buildSectionedTables(data.rooms)}</div>`
-        + `<div id="eecCardsWrap" style="display:none">${buildRoomCardStacks(data.rooms)}</div>`;
+      // Card view only — the sectioned table is intentionally hidden here so
+      // the network can see this alternate layout in real daily use, not
+      // just as a toggle option.
+      bodyHtml = buildCampusProgress(data.rooms) + buildRoomCardStacks(data.rooms);
+    } else if (code === 'AMC') {
+      // Bucketed status squares — see buildBucketedSquares() for why AMC
+      // gets its own layout (college-named classrooms).
+      bodyHtml = buildCampusProgress(data.rooms) + buildBucketedSquares(data.rooms);
     } else {
       bodyHtml = buildCampusProgress(data.rooms) + buildSectionedTables(data.rooms) + emcHtml;
     }
