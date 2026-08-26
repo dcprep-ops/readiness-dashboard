@@ -61,7 +61,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-stack-section-title{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
 .card-stack{position:relative}
 .room-card{position:relative;border-radius:10px;padding:11px 40px 11px 14px;margin-top:-11px;
-  border:3px solid var(--card);box-shadow:0 2px 5px rgba(0,0,0,.08);cursor:pointer;
+  border:2px solid var(--card);box-shadow:0 2px 5px rgba(0,0,0,.08);cursor:pointer;
   transition:margin .22s ease;z-index:1}
 .room-card:first-child{margin-top:0}
 .room-card.open{z-index:99;margin-top:10px}
@@ -458,14 +458,14 @@ function buildRoomCardStacks(rooms) {
   ordered.forEach(sec => {
     const list = groups[sec];
     if (!list || !list.length) return;
-    const icon = SECTION_ICON[sec] || 'ti-door';
     html += `<div><div class="card-stack-section-title">${sec}</div><div class="card-stack">`;
     list.forEach(r => {
+      const icon = roomIcon(r);
       const cls = mapRoomStatus(r);
       const statusClass = 'status-' + (STATUS_LABEL[cls] || 'ok');
       const label = r.space + (r.roomNumber ? ` (${r.roomNumber})` : '');
       html += `<div class="room-card ${statusClass}" onclick="toggleRoomCard(this)">
-        <i class="ti ${icon} card-type-icon" aria-hidden="true"></i>
+        ${icon ? `<i class="ti ${icon} card-type-icon" aria-hidden="true"></i>` : ''}
         <span class="card-name">${label}</span>
         <div class="card-detail">
           <p>Ops (SDO): ${r.SDO ? r.SDO.assessment : 'Not yet assessed'}</p>
@@ -495,53 +495,57 @@ function toggleRoomCard(el) {
 // Not Yet Assessed → Pending → Minor → Cleared, with N/A last), and a small
 // white badge in the corner carries the per-room status on top of that.
 // Colors sourced from the dc-prep-classroom-logos skill's colors.md, then
-// desaturated ~50% (Option B) so the tiles don't dominate the grid — same
-// hue/lightness relationship per school, just pulled saturation down.
-// `text` is re-derived per school for WCAG contrast against the new,
-// lighter `bg` (preferring the school's own stripe/secondary color where
-// it still passes AA); Virginia, FAMU, Princeton, and Spelman keep the
-// exact text colors requested rather than the auto-picked ones.
-// `stripe` (secondary color) drives the top-stripe accent on the tile and
-// is left at full saturation since it's a small accent, not the dominant
-// fill. Keys are the single most distinctive word per school rather than
-// the full official name — two-word keys (e.g. 'george mason') only match
-// a room name that spells out the whole name, and DC Prep's actual room
+// softened by tinting ~20% toward white rather than desaturating toward
+// gray — desaturation was making similarly-dark schools (the navy cluster
+// especially) collapse toward the same muddy blue-gray. Tinting keeps each
+// hue intact so schools stay identifiable, just lighter.
+// `text` is re-derived per school for WCAG contrast against the new `bg`
+// (preferring the school's own stripe/secondary color where it still
+// passes AA); Virginia, FAMU, Princeton, and Spelman keep the exact text
+// colors requested rather than the auto-picked ones.
+// `stripe` (secondary color) is left at full saturation since it's a small
+// accent, not the dominant fill. Note: Gonzaga and Georgetown share the
+// same official primary color at any saturation/tint level — not a bug,
+// the stripe (crimson vs. gray) is what tells them apart.
+// Keys are the single most distinctive word per school rather than the
+// full official name — two-word keys (e.g. 'george mason') only match a
+// room name that spells out the whole name, and DC Prep's actual room
 // labels are shorter, so full-name keys were silently missing and falling
 // back to DC Prep blue. COLLEGE_ALIASES below covers common abbreviations
 // (GW, UNC, UVA, UMD) that point at the same entry.
 const COLLEGE_COLORS = {
-  'american':     {bg:'#3C5484', text:'#fff', stripe:'#C41230'},
-  'gallaudet':    {bg:'#273A54', text:'#CBA93E', stripe:'#CBA93E'},
-  'mason':        {bg:'#216342', text:'#FFCC33', stripe:'#FFCC33'},
-  'boston':       {bg:'#892E49', text:'#fff', stripe:'#BC9B6A'},
-  'hopkins':      {bg:'#24416C', text:'#fff', stripe:'#68ACE5'},
-  'syracuse':     {bg:'#C58251', text:'#000E54', stripe:'#000E54'},
-  'williams':     {bg:'#704E95', text:'#fff', stripe:'#FFD100'},
-  'northwestern': {bg:'#614C81', text:'#fff', stripe:'#fff'},
-  'chicago':      {bg:'#772828', text:'#D9D9D9', stripe:'#D9D9D9'},
-  'michigan':     {bg:'#C8B15A', text:'#00274C', stripe:'#00274C'},
-  'gonzaga':      {bg:'#1C2F49', text:'#fff', stripe:'#C8102E'},
-  'oregon':       {bg:'#246B42', text:'#FEE11A', stripe:'#FEE11A'},
-  'pepperdine':   {bg:'#1F345C', text:'#fff', stripe:'#EE7624'},
-  'morehouse':    {bg:'#854951', text:'#fff', stripe:'#fff'},
-  'spelman':      {bg:'#BCCEDD', text:'#114488', stripe:'#fff'},
-  'xavier':       {bg:'#D2BA78', text:'#1a1a1a', stripe:'#fff'},
-  'cornell':      {bg:'#A24B4B', text:'#fff', stripe:'#222'},
-  'dartmouth':    {bg:'#22664A', text:'#fff', stripe:'#fff'},
-  'penn':         {bg:'#8A2E2E', text:'#fff', stripe:'#011F5B'},
-  'washington':   {bg:'#21475B', text:'#D6BF91', stripe:'#D6BF91'},
-  'georgetown':   {bg:'#1C2F49', text:'#fff', stripe:'#63666A'},
-  'howard':       {bg:'#204661', text:'#fff', stripe:'#E51937'},
-  'maryland':     {bg:'#B54955', text:'#fff', stripe:'#FCD116'},
-  'unc':          {bg:'#81A4BC', text:'#13294B', stripe:'#13294B'},
-  'virginia':     {bg:'#C08243', text:'#fff', stripe:'#232D4B'},
-  'famu':         {bg:'#C4906C', text:'#fff', stripe:'#1B5633'},
-  'hampton':      {bg:'#3F69BD', text:'#F3F8FC', stripe:'#F3F8FC'},
-  'tuskegee':     {bg:'#974B57', text:'#fff', stripe:'#EBA900'},
-  'princeton':    {bg:'#C08E69', text:'#fff', stripe:'#000'},
-  'stanford':     {bg:'#833C3C', text:'#fff', stripe:'#fff'},
-  'harvard':      {bg:'#974854', text:'#fff', stripe:'#fff'},
-  'yale':         {bg:'#224467', text:'#fff', stripe:'#fff'},
+  'american':     {bg:'#4364A4', text:'#fff', stripe:'#C41230'},
+  'gallaudet':    {bg:'#3D5473', text:'#fff', stripe:'#CBA93E'},
+  'mason':        {bg:'#33855C', text:'#fff', stripe:'#FFCC33'},
+  'boston':       {bg:'#AD3358', text:'#fff', stripe:'#BC9B6A'},
+  'hopkins':      {bg:'#33578E', text:'#fff', stripe:'#68ACE5'},
+  'syracuse':     {bg:'#F98733', text:'#000E54', stripe:'#000E54'},
+  'williams':     {bg:'#7F51B2', text:'#fff', stripe:'#FFD100'},
+  'northwestern': {bg:'#71559D', text:'#fff', stripe:'#fff'},
+  'chicago':      {bg:'#993333', text:'#D9D9D9', stripe:'#D9D9D9'},
+  'michigan':     {bg:'#FFD537', text:'#00274C', stripe:'#00274C'},
+  'gonzaga':      {bg:'#364B68', text:'#fff', stripe:'#C8102E'},
+  'oregon':       {bg:'#338D59', text:'#1a1a1a', stripe:'#FEE11A'},
+  'pepperdine':   {bg:'#334D7D', text:'#fff', stripe:'#EE7624'},
+  'morehouse':    {bg:'#A2505C', text:'#fff', stripe:'#fff'},
+  'spelman':      {bg:'#A8CDED', text:'#114488', stripe:'#fff'},
+  'xavier':       {bg:'#FFD256', text:'#1a1a1a', stripe:'#fff'},
+  'cornell':      {bg:'#C24949', text:'#fff', stripe:'#222'},
+  'dartmouth':    {bg:'#338765', text:'#fff', stripe:'#fff'},
+  'penn':         {bg:'#AD3333', text:'#fff', stripe:'#011F5B'},
+  'washington':   {bg:'#35637B', text:'#fff', stripe:'#D6BF91'},
+  'georgetown':   {bg:'#364B68', text:'#fff', stripe:'#63666A'},
+  'howard':       {bg:'#336182', text:'#fff', stripe:'#E51937'},
+  'maryland':     {bg:'#D84151', text:'#fff', stripe:'#FCD116'},
+  'unc':          {bg:'#6FB0DC', text:'#13294B', stripe:'#13294B'},
+  'virginia':     {bg:'#EA8E33', text:'#fff', stripe:'#232D4B'},
+  'famu':         {bg:'#F19150', text:'#fff', stripe:'#1B5633'},
+  'hampton':      {bg:'#336EE4', text:'#fff', stripe:'#F3F8FC'},
+  'tuskegee':     {bg:'#B54D5D', text:'#fff', stripe:'#EBA900'},
+  'princeton':    {bg:'#ED924E', text:'#fff', stripe:'#000'},
+  'stanford':     {bg:'#A34444', text:'#fff', stripe:'#fff'},
+  'harvard':      {bg:'#B74959', text:'#fff', stripe:'#fff'},
+  'yale':         {bg:'#335D89', text:'#fff', stripe:'#fff'},
 };
 // Alias substring -> canonical COLLEGE_COLORS key. Checked only when no
 // direct key matches, so these never shadow a more specific school.
@@ -1793,7 +1797,7 @@ async function loadCampusPanel(code) {
       // gets its own layout (college-named classrooms).
       bodyHtml = buildCampusProgress(data.rooms) + buildBucketedSquares(data.rooms);
     } else {
-      bodyHtml = buildCampusProgress(data.rooms) + buildSectionedTables(data.rooms) + emcHtml;
+      bodyHtml = buildCampusProgress(data.rooms) + emcHtml + buildSectionedTables(data.rooms);
     }
     panel.innerHTML = `<div class="main">${bodyHtml}</div>`;
     document.getElementById('hdr-meta').textContent = `SY 2026–27 · ${data.generated || ''}`;
