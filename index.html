@@ -11,7 +11,7 @@
 <meta property="og:description" content="DC Prep BOY Space Readiness Dashboard — SY 2026–27">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="share.png">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons-300.min.css">
 <style>
 :root{
   --blue:#005E9E;--blue-web:#0083C4;--gold:#E5A810;
@@ -85,7 +85,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .flip-card{perspective:600px;aspect-ratio:1/1;cursor:pointer}
 .flip-inner{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d}
 .flip-card.flipped .flip-inner{transform:rotateY(180deg)}
-.flip-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;overflow:hidden}
+.flip-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;overflow:hidden;border:0.5px solid var(--border)}
 /* College tiles with a secondary color get a top stripe in that color.
    The icon moves below the stripe (padding-top reserves its height) and
    switches to justify-content:space-between so icon and name separate to
@@ -156,10 +156,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .priority-tag{font-size:10px;font-weight:700;letter-spacing:0;text-transform:none;color:#64748b;background:#f1f5f9;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
 .kpi-pct{font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:12px}
 .kpi-pct-unit{font-size:16px;color:var(--muted);font-weight:400}
-.kpi-bar-track{height:36px;background:rgba(0,0,0,.07);border-radius:8px;overflow:hidden;display:flex}
+.kpi-bar-track{height:8px;background:rgba(0,0,0,.07);border-radius:4px;overflow:hidden;display:flex}
 .kpi-needed{font-size:12px;color:var(--text);font-weight:400;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border)}
 .kpi-needed-num{font-weight:400;color:var(--text)}
 .seg-ok{background:var(--green);height:100%;display:flex;align-items:center;padding:0 10px}
+.seg-gray-ok{background:#8a97a3;height:100%}
+.seg-gray-mn{background:#c7d0d8;height:100%}
 .seg-gray{background:#94a3b8;height:100%;display:flex;align-items:center;padding:0 10px}
 .seg-pending{background:#378ADD;height:100%;display:flex;align-items:center;padding:0 8px}
 .seg-mn{background:var(--yellow);height:100%;display:flex;align-items:center;padding:0 8px}
@@ -410,6 +412,31 @@ const SECTION_ICON = {
   'Staff Common Spaces': 'ti-coffee',
   'Technology': 'ti-device-desktop'
 };
+// Room-name-specific icon overrides for the AMC bucketed squares — without
+// this, every "Common Spaces" room (kitchen, cafeteria, science lab,
+// conference room, workroom, lactation room, hallway, ...) shows the same
+// generic armchair, since SECTION_ICON only varies by broad section.
+// Checked before falling back to SECTION_ICON. Conference room intentionally
+// matches Offices' briefcase — same icon, flagged as a known overlap rather
+// than an oversight.
+const ROOM_ICON = {
+  'kitchen':    'ti-tools-kitchen-2',
+  'cafeteria':  'ti-tools-kitchen-2',
+  'science':    'ti-atom',
+  'conference': 'ti-briefcase',
+  'workroom':   'ti-desk',
+  'lactation':  'ti-baby-carriage',
+  'restroom':   'ti-toilet-paper',
+};
+// Room names matching any of these get no type icon at all — just the name.
+const ROOM_ICON_NONE = ['hallway', 'main entrance', 'entrance', 'staircase', 'stairwell', 'lobby', 'interior courtyard', 'courtyard'];
+function roomIcon(r) {
+  const key = (r.space || '').toLowerCase();
+  if (ROOM_ICON_NONE.some(n => key.includes(n))) return null;
+  const direct = Object.keys(ROOM_ICON).find(k => key.includes(k));
+  if (direct) return ROOM_ICON[direct];
+  return SECTION_ICON[r.section] || 'ti-door';
+}
 const STATUS_LABEL = {'dot-ok':'ok','dot-minor':'minor','dot-bad':'bad'};
 
 // Alternate to buildSectionedTables — same underlying data (mapRoomStatus,
@@ -467,49 +494,54 @@ function toggleRoomCard(el) {
 // it's grouped under (mirrors the BOY sort order used elsewhere: Not Ready →
 // Not Yet Assessed → Pending → Minor → Cleared, with N/A last), and a small
 // white badge in the corner carries the per-room status on top of that.
-// Colors sourced from the dc-prep-classroom-logos skill's colors.md (each
-// school's own official primary + secondary color; internal-use-only, not
-// for public-facing material). `text` is picked for WCAG contrast against
-// `bg`. `stripe` (secondary color) drives the top-stripe accent on the
-// tile. Keys are the single most distinctive word per school rather than
+// Colors sourced from the dc-prep-classroom-logos skill's colors.md, then
+// desaturated ~50% (Option B) so the tiles don't dominate the grid — same
+// hue/lightness relationship per school, just pulled saturation down.
+// `text` is re-derived per school for WCAG contrast against the new,
+// lighter `bg` (preferring the school's own stripe/secondary color where
+// it still passes AA); Virginia, FAMU, Princeton, and Spelman keep the
+// exact text colors requested rather than the auto-picked ones.
+// `stripe` (secondary color) drives the top-stripe accent on the tile and
+// is left at full saturation since it's a small accent, not the dominant
+// fill. Keys are the single most distinctive word per school rather than
 // the full official name — two-word keys (e.g. 'george mason') only match
 // a room name that spells out the whole name, and DC Prep's actual room
 // labels are shorter, so full-name keys were silently missing and falling
 // back to DC Prep blue. COLLEGE_ALIASES below covers common abbreviations
 // (GW, UNC, UVA, UMD) that point at the same entry.
 const COLLEGE_COLORS = {
-  'american':     {bg:'#143D8D', text:'#fff', stripe:'#C41230'},
-  'gallaudet':    {bg:'#0C2950', text:'#fff', stripe:'#CBA93E'},
-  'mason':        {bg:'#006633', text:'#fff', stripe:'#FFCC33'},
-  'boston':       {bg:'#98002E', text:'#fff', stripe:'#BC9B6A'},
-  'hopkins':      {bg:'#002D72', text:'#fff', stripe:'#68ACE5'},
-  'syracuse':     {bg:'#F76900', text:'#000E54', stripe:'#000E54'},
-  'williams':     {bg:'#5F259F', text:'#fff', stripe:'#FFD100'},
-  'northwestern': {bg:'#4E2A84', text:'#fff', stripe:'#fff'},
-  'chicago':      {bg:'#800000', text:'#fff', stripe:'#D9D9D9'},
-  'michigan':     {bg:'#FFCB05', text:'#00274C', stripe:'#00274C'},
-  'gonzaga':      {bg:'#041E42', text:'#fff', stripe:'#C8102E'},
-  'oregon':       {bg:'#007030', text:'#fff', stripe:'#FEE11A'},
-  'pepperdine':   {bg:'#00205C', text:'#fff', stripe:'#EE7624'},
-  'morehouse':    {bg:'#8B2433', text:'#fff', stripe:'#fff'},
-  'spelman':      {bg:'#92C1E9', text:'#114488', stripe:'#fff'},
-  'xavier':       {bg:'#FFC72C', text:'#1a1a1a', stripe:'#fff'},
-  'cornell':      {bg:'#B31B1B', text:'#fff', stripe:'#222'},
-  'dartmouth':    {bg:'#00693E', text:'#fff', stripe:'#fff'},
-  'penn':         {bg:'#990000', text:'#fff', stripe:'#011F5B'},
-  'washington':   {bg:'#033C5A', text:'#fff', stripe:'#D6BF91'},
-  'georgetown':   {bg:'#041E42', text:'#fff', stripe:'#63666A'},
-  'howard':       {bg:'#003A63', text:'#fff', stripe:'#E51937'},
-  'maryland':     {bg:'#CE1126', text:'#fff', stripe:'#FCD116'},
-  'unc':          {bg:'#4B9CD3', text:'#13294B', stripe:'#13294B'},
-  'virginia':     {bg:'#E57200', text:'#fff', stripe:'#232D4B'},
-  'famu':         {bg:'#EE7624', text:'#fff', stripe:'#1B5633'},
-  'hampton':      {bg:'#004ADD', text:'#fff', stripe:'#F3F8FC'},
-  'tuskegee':     {bg:'#A32035', text:'#fff', stripe:'#EBA900'},
-  'princeton':    {bg:'#E87722', text:'#fff', stripe:'#000'},
-  'stanford':     {bg:'#8C1515', text:'#fff', stripe:'#fff'},
-  'harvard':      {bg:'#A51C30', text:'#fff', stripe:'#fff'},
-  'yale':         {bg:'#00356B', text:'#fff', stripe:'#fff'},
+  'american':     {bg:'#3C5484', text:'#fff', stripe:'#C41230'},
+  'gallaudet':    {bg:'#273A54', text:'#CBA93E', stripe:'#CBA93E'},
+  'mason':        {bg:'#216342', text:'#FFCC33', stripe:'#FFCC33'},
+  'boston':       {bg:'#892E49', text:'#fff', stripe:'#BC9B6A'},
+  'hopkins':      {bg:'#24416C', text:'#fff', stripe:'#68ACE5'},
+  'syracuse':     {bg:'#C58251', text:'#000E54', stripe:'#000E54'},
+  'williams':     {bg:'#704E95', text:'#fff', stripe:'#FFD100'},
+  'northwestern': {bg:'#614C81', text:'#fff', stripe:'#fff'},
+  'chicago':      {bg:'#772828', text:'#D9D9D9', stripe:'#D9D9D9'},
+  'michigan':     {bg:'#C8B15A', text:'#00274C', stripe:'#00274C'},
+  'gonzaga':      {bg:'#1C2F49', text:'#fff', stripe:'#C8102E'},
+  'oregon':       {bg:'#246B42', text:'#FEE11A', stripe:'#FEE11A'},
+  'pepperdine':   {bg:'#1F345C', text:'#fff', stripe:'#EE7624'},
+  'morehouse':    {bg:'#854951', text:'#fff', stripe:'#fff'},
+  'spelman':      {bg:'#BCCEDD', text:'#114488', stripe:'#fff'},
+  'xavier':       {bg:'#D2BA78', text:'#1a1a1a', stripe:'#fff'},
+  'cornell':      {bg:'#A24B4B', text:'#fff', stripe:'#222'},
+  'dartmouth':    {bg:'#22664A', text:'#fff', stripe:'#fff'},
+  'penn':         {bg:'#8A2E2E', text:'#fff', stripe:'#011F5B'},
+  'washington':   {bg:'#21475B', text:'#D6BF91', stripe:'#D6BF91'},
+  'georgetown':   {bg:'#1C2F49', text:'#fff', stripe:'#63666A'},
+  'howard':       {bg:'#204661', text:'#fff', stripe:'#E51937'},
+  'maryland':     {bg:'#B54955', text:'#fff', stripe:'#FCD116'},
+  'unc':          {bg:'#81A4BC', text:'#13294B', stripe:'#13294B'},
+  'virginia':     {bg:'#C08243', text:'#fff', stripe:'#232D4B'},
+  'famu':         {bg:'#C4906C', text:'#fff', stripe:'#1B5633'},
+  'hampton':      {bg:'#3F69BD', text:'#F3F8FC', stripe:'#F3F8FC'},
+  'tuskegee':     {bg:'#974B57', text:'#fff', stripe:'#EBA900'},
+  'princeton':    {bg:'#C08E69', text:'#fff', stripe:'#000'},
+  'stanford':     {bg:'#833C3C', text:'#fff', stripe:'#fff'},
+  'harvard':      {bg:'#974854', text:'#fff', stripe:'#fff'},
+  'yale':         {bg:'#224467', text:'#fff', stripe:'#fff'},
 };
 // Alias substring -> canonical COLLEGE_COLORS key. Checked only when no
 // direct key matches, so these never shadow a more specific school.
@@ -563,7 +595,7 @@ function buildBucketedSquares(rooms) {
       <div class="sq-grid">`;
     list.forEach(r => {
       const isClassroom = r.section === 'Classrooms';
-      const typeIcon = SECTION_ICON[r.section] || 'ti-door';
+      const typeIcon = roomIcon(r);
       const label = r.space + (r.roomNumber ? ` (${r.roomNumber})` : '');
       const opsText = r.SDO ? r.SDO.assessment : 'Not yet assessed';
       const techText = r.tech ? r.tech.assessment : 'Not yet assessed';
@@ -577,13 +609,13 @@ function buildBucketedSquares(rooms) {
         }
         badgeStyle = 'background:rgba(255,255,255,.95)';
       } else {
-        tileStyle = 'background:var(--bg);border:0.5px solid var(--border);color:var(--text)';
+        tileStyle = 'background:var(--bg);color:var(--text)';
         badgeStyle = 'background:#fff;border:0.5px solid var(--border)';
       }
       html += `<div class="flip-card" onclick="toggleFlip(this)"><div class="flip-inner">
         <div class="${faceClass}" style="${tileStyle}">
           <div class="sq-badge" style="${badgeStyle}"><i class="ti ${b.icon}" style="color:${b.color}" aria-hidden="true"></i></div>
-          <i class="ti ${typeIcon} sq-type-icon" aria-hidden="true"></i>
+          ${typeIcon ? `<i class="ti ${typeIcon} sq-type-icon" aria-hidden="true"></i>` : ''}
           <span class="sq-name">${label}</span>
         </div>
         <div class="flip-face flip-back"><span class="sq-back-text">Ops: ${opsText}<br>Tech: ${techText}${r.notes ? '<br>' + r.notes : ''}</span></div>
@@ -626,8 +658,8 @@ function buildCampusProgress(rooms) {
   const okPct    = Math.round(ok    / total * 100);
   const minorPct = Math.round(minor / total * 100);
   const combined = okPct + minorPct;
-  const okSeg    = okPct    > 0 ? `<div class="seg-ok" style="width:${okPct}%"><span class="seg-label-ok">${okPct >= 8 ? okPct+'%' : ''}</span></div>` : '';
-  const minorSeg = minorPct > 0 ? `<div class="seg-mn" style="width:${minorPct}%"><span class="seg-label-mn">${minorPct >= 8 ? minorPct+'%' : ''}</span></div>` : '';
+  const okSeg    = okPct    > 0 ? `<div class="seg-gray-ok" style="width:${okPct}%"></div>` : '';
+  const minorSeg = minorPct > 0 ? `<div class="seg-gray-mn" style="width:${minorPct}%"></div>` : '';
   return `<div class="net-summary">
     <div class="net-summary-title">Space Readiness Progress</div>
     <div class="kpi-pct">${combined}<span class="kpi-pct-unit">%</span></div>
