@@ -478,6 +478,43 @@ function buildCampusProgress(rooms) {
   </div>`;
 }
 
+// Two-tier liquid-fill circle: green liquid rises for "fully ready", a
+// yellow band on top of it for "minor items remain" — same two segments the
+// old bar showed, just as a fill level instead of a bar length. Text color
+// is picked per-render based on what's actually behind the center point
+// (green fill, yellow fill, or empty background) rather than a fixed color,
+// so it stays readable at any percentage — a plain "white if >50%" rule
+// would produce white-on-yellow in some ranges, which is hard to read (the
+// app's own yellow dot already uses dark text for exactly this reason).
+function buildLiquidCircle(ok, minor, title, subtitle, size) {
+  size = size || 132;
+  const r = size / 2 - 3, cx = size / 2, cy = size / 2;
+  const combined = ok + minor;
+  const greenTopY = cy + r - (ok / 100) * 2 * r;
+  const combinedTopY = cy + r - (combined / 100) * 2 * r;
+  const clipId = 'liq' + Math.random().toString(36).slice(2, 9);
+
+  let textColor;
+  if (greenTopY <= cy)          textColor = '#fff';       // center sits in the green fill
+  else if (combinedTopY <= cy)  textColor = '#1A2B3C';     // center sits in the yellow band
+  else                          textColor = 'var(--text)'; // center sits above the fill
+
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0">
+    <defs><clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath></defs>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--lt)" stroke="var(--border)" stroke-width="1"/>
+    <g clip-path="url(#${clipId})">
+      <rect x="0" y="${combinedTopY}" width="${size}" height="${size}" fill="var(--yellow)"/>
+      <rect x="0" y="${greenTopY}" width="${size}" height="${size}" fill="var(--green)"/>
+    </g>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="1"/>
+    <text x="${cx}" y="${cy + 8}" text-anchor="middle" font-size="26" font-weight="600" fill="${textColor}">${combined}<tspan font-size="14">%</tspan></text>
+  </svg>
+  <div style="text-align:center;margin-top:8px">
+    <div style="font-size:12px;font-weight:600;color:var(--text)">${title}</div>
+    ${subtitle ? `<div style="font-size:10px;color:var(--muted);max-width:${size + 30}px;margin:2px auto 0">${subtitle}</div>` : ''}
+  </div>`;
+}
+
 function buildOverall(allData) {
   function networkPcts(track) {
     let ok = 0, minor = 0, total = 0;
@@ -558,30 +595,16 @@ function buildOverall(allData) {
   const spaceP = networkSpacePcts();
   let spaceBarHtml = '';
   if (spaceP) {
-    const spaceCombined = spaceP.ok + spaceP.minor;
-    const spaceOkSeg    = spaceP.ok    > 0 ? `<div class="seg-ok" style="width:${spaceP.ok}%"><span class="seg-label-ok">${spaceP.ok >= 8 ? spaceP.ok+'%' : ''}</span></div>` : '';
-    const spaceMinorSeg = spaceP.minor > 0 ? `<div class="seg-mn" style="width:${spaceP.minor}%"><span class="seg-label-mn">${spaceP.minor >= 8 ? spaceP.minor+'%' : ''}</span></div>` : '';
-    spaceBarHtml = `<div class="kpi-card">
-      <div class="kpi-name">Total Spaces Ready</div>
-      <div class="kpi-pct">${spaceCombined}<span class="kpi-pct-unit">%</span></div>
-      <div class="kpi-bar-track">${spaceOkSeg}${spaceMinorSeg}</div>
-      <div class="bar-legend">
-        <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--green)"></span>Fully ready</span>
-        <span class="bar-legend-item"><span class="bar-legend-swatch" style="background:var(--yellow)"></span>Minor items remain</span>
-      </div>
+    spaceBarHtml = `<div class="kpi-card" style="display:flex;flex-direction:column;align-items:center">
+      ${buildLiquidCircle(spaceP.ok, spaceP.minor, 'Total spaces ready')}
     </div>`;
   }
 
   const priorityP = networkPrioritySpacePcts();
   let priorityBarHtml = '';
   if (priorityP) {
-    const pCombined = priorityP.ok + priorityP.minor;
-    const pOkSeg    = priorityP.ok    > 0 ? `<div class="seg-ok" style="width:${priorityP.ok}%"><span class="seg-label-ok">${priorityP.ok >= 8 ? priorityP.ok+'%' : ''}</span></div>` : '';
-    const pMinorSeg = priorityP.minor > 0 ? `<div class="seg-mn" style="width:${priorityP.minor}%"><span class="seg-label-mn">${priorityP.minor >= 8 ? priorityP.minor+'%' : ''}</span></div>` : '';
-    priorityBarHtml = `<div class="kpi-card">
-      <div class="kpi-name">Priority Spaces Ready <span class="priority-tag">Classrooms · Shared Student Spaces · Restrooms · Common Spaces</span></div>
-      <div class="kpi-pct">${pCombined}<span class="kpi-pct-unit">%</span></div>
-      <div class="kpi-bar-track">${pOkSeg}${pMinorSeg}</div>
+    priorityBarHtml = `<div class="kpi-card" style="display:flex;flex-direction:column;align-items:center">
+      ${buildLiquidCircle(priorityP.ok, priorityP.minor, 'Priority spaces ready', 'Classrooms · Shared Student Spaces · Restrooms · Common Spaces')}
     </div>`;
   }
 
