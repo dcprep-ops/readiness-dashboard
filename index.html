@@ -20,6 +20,7 @@
   --lt:#EBF3FB;--text:#1A2B3C;--muted:#6B8299;
   --col-mds:var(--blue);--col-sdo:#7c3aed;--col-dof:#b45309;--col-dot:#0891b2;
   --green-tint:#eafaf1;--yellow-tint:#fff8e1;--red-tint:#fdecea;--yellow-text:#92400e;
+  --pending:#378ADD;--pending-tint:#eaf3fc;--card-bg:#FAFAF9;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:var(--text);min-height:100vh}
@@ -60,20 +61,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-stacks-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
 .card-stack-section-title{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
 .card-stack{position:relative}
-.room-card{position:relative;border-radius:10px;padding:11px 40px 11px 14px;margin-top:-11px;
+.room-card{position:relative;border-radius:10px;margin-top:-11px;background:var(--card-bg);
   border:2px solid var(--card);box-shadow:0 2px 5px rgba(0,0,0,.08);cursor:pointer;
-  transition:margin .22s ease;z-index:1}
+  transition:margin .22s ease;z-index:1;overflow:hidden}
 .room-card:first-child{margin-top:0}
 .room-card.open{z-index:99;margin-top:10px}
 .room-card.open + .room-card{margin-top:10px}
-.card-name{font-weight:600;font-size:13px}
+.card-titlebar{position:relative;padding:11px 40px 11px 14px}
+.card-name{font-weight:600;font-size:13px;color:var(--text)}
 .card-type-icon{position:absolute;top:10px;right:12px;font-size:15px;opacity:.7}
-.card-detail{max-height:0;overflow:hidden;transition:max-height .22s ease;font-size:12px}
-.room-card.open .card-detail{max-height:220px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.12)}
-.card-detail p{margin:0 0 4px}
-.status-ok{background:var(--green-tint);color:var(--green)}
-.status-minor{background:var(--yellow-tint);color:var(--yellow-text)}
-.status-bad{background:var(--red-tint);color:var(--red)}
+.card-detail{max-height:0;overflow:hidden;transition:max-height .22s ease;font-size:12px;padding:0 14px;color:var(--text)}
+.room-card.open .card-detail{max-height:220px;padding-bottom:12px}
+.card-detail p{margin:4px 0 0}
+.status-ok .card-name{color:var(--green)}
+.status-minor .card-titlebar{background:var(--yellow-tint)}
+.status-bad .card-titlebar{background:var(--red-tint)}
+.status-bad .card-name{color:var(--red)}
+.status-pending .card-titlebar{background:var(--pending-tint)}
+.status-pending .card-name{color:var(--pending)}
 .space-name.cleared{color:#B8C4D0;font-weight:400}
 .row-note{font-size:12px;color:#64748b;margin-top:2px;line-height:1.4}
 
@@ -82,10 +87,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sq-bucket-hdr{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:10px}
 .sq-bucket-count{color:var(--muted);font-weight:400}
 .sq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:14px}
-.flip-card{perspective:600px;aspect-ratio:1/1;cursor:pointer}
-.flip-inner{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d}
+.flip-card{perspective:600px;-webkit-perspective:600px;aspect-ratio:1/1;cursor:pointer}
+.flip-inner{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d;-webkit-transform-style:preserve-3d}
 .flip-card.flipped .flip-inner{transform:rotateY(180deg)}
-.flip-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;overflow:hidden;border:0.5px solid var(--border)}
+.flip-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;-webkit-transform:translateZ(0);border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;overflow:hidden;border:0.5px solid var(--border)}
 /* College tiles with a secondary color get a top stripe in that color.
    The icon moves below the stripe (padding-top reserves its height) and
    switches to justify-content:space-between so icon and name separate to
@@ -437,7 +442,7 @@ function roomIcon(r) {
   if (direct) return ROOM_ICON[direct];
   return SECTION_ICON[r.section] || 'ti-door';
 }
-const STATUS_LABEL = {'dot-ok':'ok','dot-minor':'minor','dot-bad':'bad'};
+const STATUS_LABEL = {'dot-ok':'ok','dot-minor':'minor','dot-bad':'bad','dot-pending':'pending'};
 
 // Alternate to buildSectionedTables — same underlying data (mapRoomStatus,
 // not the collapsed combinedSpaceStatus, so "not ready" shows as its own
@@ -465,8 +470,10 @@ function buildRoomCardStacks(rooms) {
       const statusClass = 'status-' + (STATUS_LABEL[cls] || 'ok');
       const label = r.space + (r.roomNumber ? ` (${r.roomNumber})` : '');
       html += `<div class="room-card ${statusClass}" onclick="toggleRoomCard(this)">
-        ${icon ? `<i class="ti ${icon} card-type-icon" aria-hidden="true"></i>` : ''}
-        <span class="card-name">${label}</span>
+        <div class="card-titlebar">
+          <span class="card-name">${label}</span>
+          ${icon ? `<i class="ti ${icon} card-type-icon" aria-hidden="true"></i>` : ''}
+        </div>
         <div class="card-detail">
           <p>Ops (SDO): ${r.SDO ? r.SDO.assessment : 'Not yet assessed'}</p>
           <p>Tech: ${r.tech ? r.tech.assessment : 'Not yet assessed'}</p>
