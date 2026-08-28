@@ -80,6 +80,60 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .status-pending .card-titlebar{background:var(--pending-tint)}
 .status-pending .card-name{color:var(--pending)}
 .space-name.cleared{color:#B8C4D0;font-weight:400}
+
+/* ── Interactive campus map (AEC / AMC) ──────────────────────────────────
+   Traced floor geometry (CAMPUS_MAP_GEOMETRY) rendered full-width, joined
+   to live room data by room number. Status shows as outline color only —
+   background and text stay constant so color-on-color never fights
+   legibility. Tap opens a detail sheet (mobile); on a mouse, hovering
+   shows the same detail in a popover instead of requiring a click. */
+.cm-floor-label{font-size:11px;font-weight:700;color:var(--text);margin:20px 0 6px}
+.cm-wrap{width:100%;position:relative;background:#FAFAF9;border:0.5px solid var(--border);border-radius:8px;overflow:visible}
+.cm-room{position:absolute;border-radius:3px;display:flex;align-items:flex-end;justify-content:flex-start;cursor:pointer;
+  border-width:1px;border-style:solid;background:#F4F5F3;color:var(--text);
+  overflow:hidden;padding:4px 5px;text-align:left;transition:box-shadow .12s ease}
+.cm-room.cm-icon-mode,.cm-room.cm-restroom{align-items:center;justify-content:center;padding:0}
+.cm-lbl{font-weight:500;line-height:1.15;overflow-wrap:break-word;word-break:break-word;width:100%}
+.cm-icon{font-size:16px;color:var(--muted)}
+.cm-room-ok{border-color:var(--green)}
+.cm-room-minor{border-color:#e0b32e}
+.cm-room-bad{border-color:var(--red)}
+.cm-room-pending{border-color:var(--pending)}
+.cm-room-untracked,.cm-room-excluded{border-color:#D5D5D0;color:#9AA0A6;cursor:default}
+.cm-legend{display:flex;gap:10px;font-size:9.5px;color:var(--muted);flex-wrap:wrap;margin-bottom:4px}
+.cm-legend span{display:inline-flex;align-items:center;gap:4px}
+.cm-ring{width:10px;height:10px;border-radius:50%;display:inline-block;border-width:1.5px;border-style:solid;background:#F4F5F3}
+
+.cm-hover-card{position:fixed;z-index:200;background:#fff;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);
+  width:220px;pointer-events:none;opacity:0;transition:opacity .1s;overflow:hidden}
+.cm-hover-card.show{opacity:1}
+.cm-hover-titlebar{padding:10px 14px}
+.cm-hover-titlebar .cm-hname{font-size:14px;font-weight:700}
+.cm-hover-titlebar .cm-hstatus{font-size:11px;opacity:.85;margin-top:1px}
+.cm-hover-body{padding:10px 14px 12px;font-size:11px}
+.cm-hover-row{display:flex;justify-content:space-between;padding:4px 0}
+.cm-hover-row .cm-hlabel{color:var(--muted)}
+.cm-hover-row .cm-hvalue{font-weight:600}
+
+.cm-sheet-backdrop{position:fixed;inset:0;background:rgba(10,20,30,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:300}
+.cm-sheet-backdrop.open{opacity:1;pointer-events:auto}
+.cm-sheet{position:fixed;left:0;right:0;bottom:0;max-width:390px;margin:0 auto;background:#fff;border-radius:16px 16px 0 0;
+  transform:translateY(100%);transition:transform .25s ease;z-index:301;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
+.cm-sheet.open{transform:translateY(0)}
+.cm-sheet-handle{width:36px;height:4px;background:#E0E0E0;border-radius:2px;margin:10px auto}
+.cm-sheet-titlebar{padding:14px 20px}
+.cm-sheet-titlebar .cm-sroomnum{font-size:19px;font-weight:700}
+.cm-sheet-titlebar .cm-ssection{font-size:12px;opacity:.8;margin-top:2px}
+.cm-sheet-body{padding:16px 20px 28px}
+.cm-sheet-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--border)}
+.cm-sheet-row:last-child{border-bottom:none}
+.cm-sheet-row .cm-slabel{font-size:12px;color:var(--muted)}
+.cm-sheet-row .cm-svalue{font-size:13px;font-weight:600;text-align:right}
+.cm-sheet-note{font-size:12px;color:var(--text);background:var(--bg);border-radius:8px;padding:10px 12px;margin-top:8px}
+.cm-hover-titlebar.hstatus-ok,.cm-sheet-titlebar.hstatus-ok{background:transparent;color:var(--green)}
+.cm-hover-titlebar.hstatus-minor,.cm-sheet-titlebar.hstatus-minor{background:var(--yellow-tint);color:var(--text)}
+.cm-hover-titlebar.hstatus-bad,.cm-sheet-titlebar.hstatus-bad{background:var(--red-tint);color:var(--red)}
+.cm-hover-titlebar.hstatus-pending,.cm-sheet-titlebar.hstatus-pending{background:var(--pending-tint);color:var(--pending)}
 .row-note{font-size:12px;color:#64748b;margin-top:2px;line-height:1.4}
 
 /* ── bucketed status squares (alternate to the sectioned table, AMC) ── */
@@ -443,6 +497,15 @@ function roomIcon(r) {
   return SECTION_ICON[r.section] || 'ti-door';
 }
 const STATUS_LABEL = {'dot-ok':'ok','dot-minor':'minor','dot-bad':'bad','dot-pending':'pending'};
+// ── Interactive campus map data (AEC / AMC) ────────────────────────────────
+// Traced floor geometry for the shared Anacostia building, hand-corrected
+// against grid-overlaid photos of the real floor plans. Each room's `room`
+// value is the room number, joined against live data (r.roomNumber) at
+// render time — geometry has no status/name of its own, that always comes
+// from the live sheet. `excluded` rooms (closets, electrical) render for
+// spatial reference but are never clickable and never joined to live data.
+const CAMPUS_MAP_GEOMETRY = {"AEC":[{"label":"Floor 1","bbox":[66.0,46.0,593.0,454.0],"rooms":[{"room":"158","x":91.0,"y":101.0,"w":38.0,"h":18.0,"excluded":false},{"room":"155","x":131.0,"y":101.0,"w":49.0,"h":18.0,"excluded":false},{"room":"Front Desk","x":181.0,"y":101.0,"w":57.0,"h":38.0,"excluded":false},{"room":"CS1","x":241.0,"y":101.0,"w":38.0,"h":58.0,"excluded":false},{"room":"154","x":91.0,"y":121.0,"w":18.0,"h":18.0,"excluded":false},{"room":"157","x":91.0,"y":141.0,"w":18.0,"h":18.0,"excluded":false},{"room":"156","x":131.0,"y":141.0,"w":49.0,"h":18.0,"excluded":false},{"room":"159","x":181.0,"y":141.0,"w":38.0,"h":38.0,"excluded":false},{"room":"152","x":261.0,"y":142.0,"w":18.0,"h":18.0,"excluded":false},{"room":"165","x":81.0,"y":161.0,"w":98.0,"h":38.0,"excluded":false},{"room":"161","x":241.0,"y":161.0,"w":38.0,"h":57.0,"excluded":false},{"room":"160","x":181.0,"y":181.0,"w":38.0,"h":18.0,"excluded":false},{"room":"166","x":81.0,"y":201.0,"w":38.0,"h":18.0,"excluded":false},{"room":"162","x":181.0,"y":201.0,"w":38.0,"h":18.0,"excluded":false},{"room":"167","x":81.0,"y":221.0,"w":38.0,"h":18.0,"excluded":false},{"room":"168","x":81.0,"y":241.0,"w":58.0,"h":55.0,"excluded":false},{"room":"190","x":161.0,"y":261.0,"w":138.0,"h":118.0,"excluded":false},{"room":"191","x":301.0,"y":261.0,"w":98.0,"h":118.0,"excluded":false},{"room":"188","x":341.0,"y":141.0,"w":58.0,"h":58.0,"excluded":false},{"room":"174","x":401.0,"y":141.0,"w":38.0,"h":28.0,"excluded":false},{"room":"187","x":401.0,"y":171.0,"w":38.0,"h":28.0,"excluded":false},{"room":"171","x":340.0,"y":61.0,"w":58.0,"h":58.0,"excluded":false},{"room":"173","x":400.0,"y":61.0,"w":58.0,"h":58.0,"excluded":false},{"room":"175","x":460.0,"y":61.0,"w":58.0,"h":58.0,"excluded":false},{"room":"177","x":520.0,"y":61.0,"w":58.0,"h":58.0,"excluded":false},{"room":"178","x":460.0,"y":141.0,"w":58.0,"h":28.0,"excluded":false},{"room":"179","x":520.0,"y":141.0,"w":38.0,"h":28.0,"excluded":false},{"room":"184","x":460.0,"y":171.0,"w":58.0,"h":28.0,"excluded":false},{"room":"180","x":520.0,"y":171.0,"w":38.0,"h":28.0,"excluded":false},{"room":"185","x":361.0,"y":221.0,"w":71.0,"h":39.0,"excluded":false},{"room":"183","x":434.0,"y":221.0,"w":71.0,"h":39.0,"excluded":false},{"room":"181","x":507.0,"y":221.0,"w":71.0,"h":39.0,"excluded":false},{"room":"150","x":161.0,"y":241.0,"w":138.0,"h":18.0,"excluded":false},{"room":"192","x":361.0,"y":381.0,"w":38.0,"h":38.0,"excluded":false},{"room":"192B","x":361.0,"y":421.0,"w":38.0,"h":18.0,"excluded":false}]},{"label":"Floor 2","bbox":[142.0,46.0,593.0,332.0],"rooms":[{"room":"251","x":160.5,"y":61.0,"w":58.0,"h":48.0,"excluded":false},{"room":"253","x":220.5,"y":61.0,"w":58.0,"h":48.0,"excluded":false},{"room":"258","x":280.5,"y":61.0,"w":58.0,"h":48.0,"excluded":false},{"room":"259","x":340.5,"y":61.0,"w":58.0,"h":48.0,"excluded":false},{"room":"261","x":400.5,"y":61.0,"w":58.0,"h":48.0,"excluded":false},{"room":"264","x":460.5,"y":61.0,"w":58.0,"h":48.0,"excluded":false},{"room":"265","x":519.5,"y":61.0,"w":58.0,"h":48.0,"excluded":false},{"room":"252","x":157.0,"y":129.0,"w":38.0,"h":38.0,"excluded":false},{"room":"254","x":197.0,"y":129.0,"w":18.0,"h":38.0,"excluded":false},{"room":"255","x":217.0,"y":129.0,"w":18.0,"h":38.0,"excluded":false},{"room":"256","x":237.0,"y":129.0,"w":18.0,"h":18.0,"excluded":false},{"room":"257","x":257.0,"y":129.0,"w":38.0,"h":18.0,"excluded":false},{"room":"260","x":337.0,"y":129.0,"w":78.0,"h":38.0,"excluded":false},{"room":"266","x":514.0,"y":111.0,"w":64.0,"h":48.0,"excluded":false},{"room":"277","x":257.0,"y":149.0,"w":38.0,"h":18.0,"excluded":false},{"room":"276","x":337.0,"y":169.0,"w":18.0,"h":18.0,"excluded":false},{"room":"275","x":357.0,"y":169.0,"w":18.0,"h":18.0,"excluded":false},{"room":"274","x":377.0,"y":169.0,"w":18.0,"h":18.0,"excluded":false},{"room":"273","x":397.0,"y":169.0,"w":18.0,"h":18.0,"excluded":false},{"room":"267","x":514.0,"y":161.0,"w":64.0,"h":48.0,"excluded":false},{"room":"271","x":394.0,"y":211.0,"w":58.0,"h":48.0,"excluded":false},{"room":"269","x":454.0,"y":211.0,"w":58.0,"h":48.0,"excluded":false},{"room":"268","x":514.0,"y":211.0,"w":64.0,"h":48.0,"excluded":false},{"room":"281","x":341.0,"y":259.0,"w":58.0,"h":58.0,"excluded":false},{"room":"281S","x":321.0,"y":299.0,"w":18.0,"h":18.0,"excluded":true},{"room":"200S","x":321.0,"y":239.0,"w":18.0,"h":18.0,"excluded":false},{"room":"280","x":339.0,"y":239.0,"w":36.0,"h":18.0,"excluded":false},{"room":"279","x":358.0,"y":219.0,"w":18.0,"h":18.0,"excluded":false},{"room":"272","x":421.0,"y":149.0,"w":78.0,"h":38.0,"excluded":false},{"room":"250E","x":421.0,"y":129.0,"w":18.0,"h":18.0,"excluded":true},{"room":"262","x":441.0,"y":129.0,"w":18.0,"h":18.0,"excluded":false},{"room":"263","x":461.0,"y":129.0,"w":38.0,"h":18.0,"excluded":false}]}],"AMC":[{"label":"Floor 1","bbox":[46.0,283.0,574.0,714.0],"rooms":[{"room":"100","x":81.0,"y":298.0,"w":78.0,"h":81.0,"excluded":false},{"room":"117","x":198.3,"y":381.0,"w":37.3,"h":18.0,"excluded":false},{"room":"118","x":235.7,"y":381.0,"w":37.3,"h":18.0,"excluded":false},{"room":"103E","x":161.0,"y":381.0,"w":37.3,"h":18.0,"excluded":true},{"room":"115","x":161.0,"y":421.0,"w":38.0,"h":58.0,"excluded":false},{"room":"116","x":201.0,"y":421.0,"w":78.0,"h":58.0,"excluded":false},{"room":"107","x":161.0,"y":481.0,"w":58.0,"h":18.0,"excluded":false},{"room":"104","x":221.0,"y":481.0,"w":58.0,"h":18.0,"excluded":false},{"room":"113","x":61.0,"y":381.0,"w":18.0,"h":38.0,"excluded":false},{"room":"112","x":61.0,"y":421.0,"w":18.0,"h":38.0,"excluded":false},{"room":"109","x":61.0,"y":461.0,"w":78.0,"h":78.0,"excluded":false},{"room":"108","x":61.0,"y":541.0,"w":78.0,"h":78.0,"excluded":false},{"room":"110","x":101.0,"y":381.0,"w":38.0,"h":38.0,"excluded":false},{"room":"111","x":101.0,"y":421.0,"w":38.0,"h":38.0,"excluded":false},{"room":"119","x":321.0,"y":421.0,"w":38.0,"h":38.0,"excluded":false},{"room":"120","x":321.0,"y":461.0,"w":18.0,"h":18.0,"excluded":false},{"room":"101","x":361.0,"y":521.0,"w":58.0,"h":18.0,"excluded":false},{"room":"102","x":361.0,"y":541.0,"w":58.0,"h":18.0,"excluded":false},{"room":"103S1","x":321.0,"y":541.0,"w":18.0,"h":18.0,"excluded":true},{"room":"103","x":321.0,"y":561.0,"w":238.0,"h":138.0,"excluded":false},{"room":"106","x":161.0,"y":521.0,"w":59.0,"h":98.0,"excluded":false},{"room":"105","x":220.0,"y":521.0,"w":59.0,"h":98.0,"excluded":false}]},{"label":"Floor 2","bbox":[46.0,46.0,574.0,714.0],"rooms":[{"room":"243","x":61.0,"y":61.0,"w":58.0,"h":48.0,"excluded":false},{"room":"242","x":61.0,"y":111.0,"w":18.0,"h":18.0,"excluded":false},{"room":"240","x":101.0,"y":111.0,"w":18.0,"h":18.0,"excluded":false},{"room":"241","x":61.0,"y":131.0,"w":18.0,"h":18.0,"excluded":false},{"room":"246","x":237.0,"y":149.0,"w":18.0,"h":18.0,"excluded":false},{"room":"239","x":61.0,"y":151.0,"w":18.0,"h":18.0,"excluded":false},{"room":"244","x":157.0,"y":183.0,"w":28.0,"h":38.0,"excluded":false},{"room":"245","x":187.0,"y":183.0,"w":88.0,"h":38.0,"excluded":false},{"room":"238","x":61.0,"y":191.0,"w":58.0,"h":51.8,"excluded":false},{"room":"236","x":61.0,"y":245.0,"w":58.0,"h":51.8,"excluded":false},{"room":"235","x":61.0,"y":299.0,"w":58.0,"h":51.8,"excluded":false},{"room":"233","x":61.0,"y":352.0,"w":58.0,"h":51.8,"excluded":false},{"room":"231","x":61.0,"y":406.0,"w":58.0,"h":51.8,"excluded":false},{"room":"229","x":61.0,"y":460.0,"w":58.0,"h":51.8,"excluded":false},{"room":"224","x":61.0,"y":514.0,"w":58.0,"h":51.8,"excluded":false},{"room":"223","x":61.0,"y":567.0,"w":65.8,"h":51.8,"excluded":false},{"room":"220T","x":121.0,"y":367.0,"w":18.0,"h":38.0,"excluded":false},{"room":"220M","x":121.0,"y":404.0,"w":18.0,"h":38.0,"excluded":false},{"room":"228","x":121.0,"y":474.0,"w":18.0,"h":38.0,"excluded":false},{"room":"225","x":121.0,"y":511.0,"w":18.0,"h":38.0,"excluded":false},{"room":"237","x":157.0,"y":223.0,"w":58.0,"h":58.0,"excluded":false},{"room":"201","x":217.0,"y":223.0,"w":58.0,"h":58.0,"excluded":false},{"room":"203","x":321.0,"y":259.0,"w":18.0,"h":18.0,"excluded":false},{"room":"209","x":341.0,"y":319.0,"w":58.0,"h":58.0,"excluded":false},{"room":"234","x":157.0,"y":283.0,"w":18.0,"h":38.0,"excluded":false},{"room":"207","x":177.0,"y":283.0,"w":98.0,"h":98.0,"excluded":false},{"room":"206","x":277.0,"y":283.0,"w":18.0,"h":58.0,"excluded":false},{"room":"204","x":321.0,"y":279.0,"w":18.0,"h":18.0,"excluded":false},{"room":"230","x":177.0,"y":381.0,"w":38.0,"h":73.0,"excluded":false},{"room":"208","x":217.0,"y":381.0,"w":58.0,"h":110.5,"excluded":false},{"room":"211","x":301.0,"y":448.0,"w":18.0,"h":28.0,"excluded":false},{"room":"210","x":301.0,"y":430.0,"w":18.0,"h":18.0,"excluded":false},{"room":"212","x":301.0,"y":477.0,"w":18.0,"h":28.0,"excluded":false},{"room":"214","x":301.0,"y":507.0,"w":18.0,"h":28.0,"excluded":false},{"room":"215","x":301.0,"y":537.0,"w":18.0,"h":28.0,"excluded":false},{"room":"217","x":261.0,"y":581.0,"w":18.0,"h":18.0,"excluded":false},{"room":"216","x":261.0,"y":601.0,"w":38.0,"h":18.0,"excluded":false},{"room":"227","x":177.0,"y":456.0,"w":38.0,"h":23.0,"excluded":false},{"room":"226","x":177.0,"y":481.0,"w":38.0,"h":23.0,"excluded":false},{"room":"221","x":177.0,"y":506.0,"w":38.0,"h":23.0,"excluded":false},{"room":"222","x":125.4,"y":567.0,"w":65.8,"h":51.8,"excluded":false},{"room":"218","x":193.2,"y":567.0,"w":65.8,"h":51.8,"excluded":false},{"room":"103","x":321.0,"y":561.0,"w":238.0,"h":138.0,"excluded":false},{"room":"219","x":217.0,"y":492.2,"w":19.3,"h":36.8,"excluded":false},{"room":"213","x":236.3,"y":492.2,"w":38.7,"h":36.8,"excluded":false}]}]};
+
 
 // Alternate to buildSectionedTables — same underlying data (mapRoomStatus,
 // not the collapsed combinedSpaceStatus, so "not ready" shows as its own
@@ -635,6 +698,199 @@ function buildBucketedSquares(rooms) {
     html += `</div></div>`;
   });
   return html || '<div class="empty-msg">No spaces found for this campus.</div>';
+}
+
+// ── Interactive campus map (AEC / AMC) ──────────────────────────────────
+// Two-pass build like the EMC map: buildInteractiveMap() returns the HTML
+// skeleton (floor labels + empty map containers) that goes into bodyHtml;
+// renderInteractiveMap() is called afterward, once those containers are
+// actually in the DOM, to do the real work — positioning rooms, sizing
+// them to the container's real width, and fitting labels — since that all
+// needs real layout dimensions that don't exist until the HTML is inserted.
+function buildInteractiveMap(campusCode) {
+  const geometry = CAMPUS_MAP_GEOMETRY[campusCode];
+  if (!geometry || !geometry.length) {
+    return '<div class="empty-msg">No map available for ' + campusCode + ' yet.</div>';
+  }
+  let html = `<div class="cm-legend">
+    <span><span class="cm-ring" style="border-color:var(--green)"></span>Ready</span>
+    <span><span class="cm-ring" style="border-color:#e0b32e"></span>Minor</span>
+    <span><span class="cm-ring" style="border-color:var(--red)"></span>Not ready</span>
+    <span><span class="cm-ring" style="border-color:var(--pending)"></span>Pending</span>
+    <span><span class="cm-ring" style="border-color:#D5D5D0"></span>Not tracked</span>
+  </div>`;
+  geometry.forEach((floor, fi) => {
+    html += `<div class="cm-floor-label">${floor.label}</div>
+      <div class="cm-wrap" id="cm-wrap-${campusCode}-${fi}"><div style="position:relative" id="cm-inner-${campusCode}-${fi}"></div></div>`;
+  });
+  return html;
+}
+
+const CM_MIN_FS = 6.5, CM_BASE_FS = 11;
+function cmFitText(span, box, text) {
+  span.textContent = text;
+  let fs = CM_BASE_FS;
+  span.style.fontSize = fs + 'px';
+  while (fs > CM_MIN_FS && (span.scrollHeight > box.clientHeight || span.scrollWidth > box.clientWidth)) {
+    fs -= 0.5;
+    span.style.fontSize = fs + 'px';
+  }
+  return span.scrollHeight <= box.clientHeight && span.scrollWidth <= box.clientWidth;
+}
+// Name-primary: try the name alone first (no room number — number only
+// shows up if nothing else fits). Returns false if literally nothing does,
+// so the caller can fall back to an icon instead of forcing broken text —
+// this replaces an earlier fixed-pixel-size cutoff, which missed odd
+// aspect-ratio boxes where the name still didn't fit despite the box not
+// being tiny in absolute terms.
+function cmPickLabel(span, box, name, roomNum) {
+  if (name && cmFitText(span, box, name)) return true;
+  if (name) {
+    for (let cut = name.length - 1; cut >= 2; cut--) {
+      if (cmFitText(span, box, name.slice(0, cut) + '…')) return true;
+    }
+  }
+  if (cmFitText(span, box, String(roomNum))) return true;
+  return false;
+}
+function cmRestroomIcon(spaceName) {
+  const n = (spaceName || '').toLowerCase();
+  if (n.includes('boys')) return 'ti-square-rounded-letter-b';
+  if (n.includes('girls')) return 'ti-square-rounded-letter-g';
+  if (n.includes('all-gender') || n.includes('all gender')) return 'ti-badge-wc';
+  return null;
+}
+const CM_STATUS_LABELS = {ok:'Ready', minor:'Minor items', bad:'Not ready', pending:'Pending signoff'};
+const CM_HOVER_CAPABLE = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+
+function renderInteractiveMap(campusCode, liveRooms) {
+  const geometry = CAMPUS_MAP_GEOMETRY[campusCode];
+  if (!geometry || !geometry.length) return;
+  cmEnsureOverlays();
+  const byRoom = {};
+  liveRooms.forEach(r => { if (r.roomNumber) byRoom[String(r.roomNumber)] = r; });
+
+  geometry.forEach((floor, fi) => {
+    const wrap = document.getElementById(`cm-wrap-${campusCode}-${fi}`);
+    const inner = document.getElementById(`cm-inner-${campusCode}-${fi}`);
+    if (!wrap || !inner) return;
+    const [x0,y0,x1,y1] = floor.bbox;
+    const floorW = x1-x0, floorH = y1-y0;
+    const scale = wrap.clientWidth / floorW;
+    inner.style.width = (floorW*scale)+'px';
+    inner.style.height = (floorH*scale)+'px';
+    wrap.style.height = (floorH*scale)+'px';
+    inner.innerHTML = '';
+
+    floor.rooms.forEach(geo => {
+      const live = byRoom[String(geo.room)];
+      const w = geo.w*scale, h = geo.h*scale;
+      const div = document.createElement('div');
+      div.style.left = (geo.x-x0)*scale+'px';
+      div.style.top = (geo.y-y0)*scale+'px';
+      div.style.width = w+'px';
+      div.style.height = h+'px';
+
+      if (geo.excluded || !live) {
+        div.className = 'cm-room ' + (geo.excluded ? 'cm-room-excluded' : 'cm-room-untracked');
+        inner.appendChild(div);
+        return;
+      }
+
+      const statusCls = STATUS_LABEL[mapRoomStatus(live)] || 'ok';
+      div.className = 'cm-room cm-room-' + statusCls;
+      const rrIcon = cmRestroomIcon(live.space);
+      if (rrIcon) {
+        div.classList.add('cm-restroom');
+        div.innerHTML = `<i class="ti ${rrIcon} cm-icon"></i>`;
+      } else {
+        const span = document.createElement('span');
+        span.className = 'cm-lbl';
+        div.appendChild(span);
+        const fits = cmPickLabel(span, div, live.space, geo.room);
+        if (!fits) {
+          div.innerHTML = `<i class="ti ${roomIcon(live)} cm-icon"></i>`;
+          div.classList.add('cm-icon-mode');
+        }
+      }
+      div.title = live.space + (geo.room ? ` (${geo.room})` : '');
+      div.onclick = () => cmOpenSheet(live, statusCls);
+      if (CM_HOVER_CAPABLE) {
+        div.addEventListener('mouseenter', () => cmShowHover(live, statusCls, div));
+        div.addEventListener('mouseleave', cmHideHover);
+      }
+      inner.appendChild(div);
+    });
+  });
+}
+
+// Sheet + hover-card DOM is shared across all campus maps and created once,
+// lazily, rather than baked into every panel render.
+let _cmOverlaysReady = false;
+function cmEnsureOverlays() {
+  if (_cmOverlaysReady) return;
+  _cmOverlaysReady = true;
+  const div = document.createElement('div');
+  div.innerHTML = `
+    <div class="cm-hover-card" id="cmHoverCard">
+      <div class="cm-hover-titlebar" id="cmHoverTitlebar">
+        <div class="cm-hname" id="cmHoverName"></div>
+        <div class="cm-hstatus" id="cmHoverStatus"></div>
+      </div>
+      <div class="cm-hover-body">
+        <div class="cm-hover-row"><span class="cm-hlabel">Ops (SDO)</span><span class="cm-hvalue" id="cmHoverOps"></span></div>
+        <div class="cm-hover-row"><span class="cm-hlabel">Tech (DoT)</span><span class="cm-hvalue" id="cmHoverTech"></span></div>
+      </div>
+    </div>
+    <div class="cm-sheet-backdrop" id="cmSheetBackdrop"></div>
+    <div class="cm-sheet" id="cmSheet">
+      <div class="cm-sheet-handle"></div>
+      <div class="cm-sheet-titlebar" id="cmSheetTitlebar">
+        <div class="cm-sroomnum" id="cmSheetRoomNum"></div>
+        <div class="cm-ssection" id="cmSheetSection"></div>
+      </div>
+      <div class="cm-sheet-body">
+        <div class="cm-sheet-row"><span class="cm-slabel">Ops (SDO)</span><span class="cm-svalue" id="cmSheetOps"></span></div>
+        <div class="cm-sheet-row"><span class="cm-slabel">Tech (DoT)</span><span class="cm-svalue" id="cmSheetTech"></span></div>
+        <div id="cmSheetNoteWrap" style="display:none"><div class="cm-sheet-note" id="cmSheetNote"></div></div>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+  document.getElementById('cmSheetBackdrop').onclick = cmCloseSheet;
+}
+function cmShowHover(live, statusCls, el) {
+  const card = document.getElementById('cmHoverCard');
+  document.getElementById('cmHoverName').textContent = live.space + (live.roomNumber ? ` (${live.roomNumber})` : '');
+  document.getElementById('cmHoverStatus').textContent = CM_STATUS_LABELS[statusCls];
+  document.getElementById('cmHoverTitlebar').className = 'cm-hover-titlebar hstatus-' + statusCls;
+  document.getElementById('cmHoverOps').textContent = live.SDO ? live.SDO.assessment : 'Not yet assessed';
+  document.getElementById('cmHoverTech').textContent = live.tech ? live.tech.assessment : 'Not yet assessed';
+  const rect = el.getBoundingClientRect();
+  let left = rect.right + 10;
+  if (left + 220 > window.innerWidth) left = rect.left - 230;
+  card.style.left = Math.max(8,left)+'px';
+  card.style.top = Math.max(8, rect.top)+'px';
+  card.classList.add('show');
+}
+function cmHideHover() {
+  const card = document.getElementById('cmHoverCard');
+  if (card) card.classList.remove('show');
+}
+function cmOpenSheet(live, statusCls) {
+  document.getElementById('cmSheetRoomNum').textContent = live.space + (live.roomNumber ? ` (${live.roomNumber})` : '');
+  document.getElementById('cmSheetSection').textContent = CM_STATUS_LABELS[statusCls];
+  document.getElementById('cmSheetTitlebar').className = 'cm-sheet-titlebar hstatus-' + statusCls;
+  document.getElementById('cmSheetOps').textContent = live.SDO ? live.SDO.assessment : 'Not yet assessed';
+  document.getElementById('cmSheetTech').textContent = live.tech ? live.tech.assessment : 'Not yet assessed';
+  const noteWrap = document.getElementById('cmSheetNoteWrap');
+  if (live.notes) { noteWrap.style.display='block'; document.getElementById('cmSheetNote').textContent = live.notes; }
+  else { noteWrap.style.display='none'; }
+  document.getElementById('cmSheet').classList.add('open');
+  document.getElementById('cmSheetBackdrop').classList.add('open');
+}
+function cmCloseSheet() {
+  document.getElementById('cmSheet').classList.remove('open');
+  document.getElementById('cmSheetBackdrop').classList.remove('open');
 }
 
 function buildEECViewToggle() {
@@ -1799,10 +2055,17 @@ async function loadCampusPanel(code) {
       // the network can see this alternate layout in real daily use, not
       // just as a toggle option.
       bodyHtml = buildCampusProgress(data.rooms) + buildRoomCardStacks(data.rooms);
-    } else if (code === 'AMC') {
-      // Bucketed status squares — see buildBucketedSquares() for why AMC
+    } else if (code === 'BMC') {
+      // Bucketed status squares — see buildBucketedSquares() for why BMC
       // gets its own layout (college-named classrooms).
       bodyHtml = buildCampusProgress(data.rooms) + buildBucketedSquares(data.rooms);
+    } else if (code === 'AEC' || code === 'AMC') {
+      // Interactive floor map — AEC and AMC share one physical building,
+      // so this map replaces both campuses' tile view. Geometry lives in
+      // CAMPUS_MAP_GEOMETRY; renderInteractiveMap() does the actual DOM
+      // work after this HTML is in the page (see the post-render hook
+      // below, same pattern as EMC's map).
+      bodyHtml = buildCampusProgress(data.rooms) + buildInteractiveMap(code);
     } else {
       bodyHtml = buildCampusProgress(data.rooms) + emcHtml + buildSectionedTables(data.rooms);
     }
@@ -1814,6 +2077,10 @@ async function loadCampusPanel(code) {
       // dots already show today's live combined status; the slider then
       // takes over once history is in.
       fetchReadinessHistory().then(h => initEMCTimeline(h.rows || [], emcNodes)).catch(() => {});
+    } else if (code === 'AEC' || code === 'AMC') {
+      // Container divs from buildInteractiveMap() now exist in the DOM —
+      // safe to measure their real width and actually place rooms.
+      renderInteractiveMap(code, data.rooms);
     }
   } catch(e) {
     panel.innerHTML = `<div class="main"><div class="empty-msg" style="color:var(--red)">Error loading ${code} data. Check the Apps Script URL.</div></div>`;
@@ -1920,6 +2187,22 @@ function animateBurndownLine() {
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 const loaded = new Set();
+
+// Re-render the interactive map on resize, using the cached data rather
+// than refetching — same debounce pattern as positionLabel's resize
+// listener elsewhere in this file.
+let _cmResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_cmResizeTimer);
+  _cmResizeTimer = setTimeout(() => {
+    const activePanel = document.querySelector('.tab-panel.active');
+    if (!activePanel) return;
+    const code = activePanel.id.replace('panel-', '');
+    if ((code === 'AEC' || code === 'AMC') && _campusCache[code]) {
+      renderInteractiveMap(code, _campusCache[code].data.rooms);
+    }
+  }, 150);
+});
 
 function showTab(id, el) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
