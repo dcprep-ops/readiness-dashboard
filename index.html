@@ -88,9 +88,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
    legibility. Tap opens a detail sheet (mobile); on a mouse, hovering
    shows the same detail in a popover instead of requiring a click. */
 .cm-floor-label{font-size:11px;font-weight:700;color:var(--text);margin:20px 0 6px}
-.cm-wrap{width:100%;position:relative;background:#FAFAF9;border:0.5px solid var(--border);border-radius:8px;overflow:visible}
+.cm-wrap{width:100%;position:relative;background:#fff;border:0.5px solid var(--border);border-radius:8px;overflow:visible}
 .cm-room{position:absolute;border-radius:3px;display:flex;align-items:flex-end;justify-content:flex-start;cursor:pointer;
-  border-width:1px;border-style:solid;background:#F4F5F3;color:var(--text);
+  border-width:1.5px;border-style:solid;background:#F4F5F3;color:var(--text);
   overflow:hidden;padding:4px 5px;text-align:left;transition:box-shadow .12s ease}
 .cm-room.cm-icon-mode,.cm-room.cm-restroom{align-items:center;justify-content:center;padding:0}
 .cm-lbl{font-weight:500;line-height:1.15;overflow-wrap:break-word;word-break:break-word;width:100%}
@@ -726,16 +726,24 @@ function buildInteractiveMap(campusCode) {
   return html;
 }
 
-const CM_MIN_FS = 6.5, CM_BASE_FS = 11;
+const CM_MIN_FS = 8, CM_BASE_FS = 11, CM_MAX_LINES = 2, CM_LINE_HEIGHT = 1.15, CM_ABSOLUTE_MIN_BOX = 20;
 function cmFitText(span, box, text) {
   span.textContent = text;
   let fs = CM_BASE_FS;
   span.style.fontSize = fs + 'px';
-  while (fs > CM_MIN_FS && (span.scrollHeight > box.clientHeight || span.scrollWidth > box.clientWidth)) {
+  function overflows() {
+    if (span.scrollHeight > box.clientHeight || span.scrollWidth > box.clientWidth) return true;
+    // technically-within-bounds isn't good enough on its own — more than
+    // two lines of shrunk text reads as "doesn't fit" even when the box
+    // is technically tall enough to contain it without clipping.
+    const lines = Math.round(span.scrollHeight / (fs * CM_LINE_HEIGHT));
+    return lines > CM_MAX_LINES;
+  }
+  while (fs > CM_MIN_FS && overflows()) {
     fs -= 0.5;
     span.style.fontSize = fs + 'px';
   }
-  return span.scrollHeight <= box.clientHeight && span.scrollWidth <= box.clientWidth;
+  return !overflows();
 }
 // Name-primary: try the name alone first (no room number — number only
 // shows up if nothing else fits). Returns false if literally nothing does,
@@ -745,8 +753,13 @@ function cmFitText(span, box, text) {
 // being tiny in absolute terms.
 function cmPickLabel(span, box, name, roomNum) {
   if (name && cmFitText(span, box, name)) return true;
-  if (name) {
-    for (let cut = name.length - 1; cut >= 2; cut--) {
+  // Truncating down to 2-3 characters technically "fits" but isn't
+  // meaningful — stop at a floor where the fragment still reads as
+  // something, rather than accepting any truncation that satisfies the
+  // bounding box.
+  const MIN_MEANINGFUL_CHARS = 6;
+  if (name && name.length > MIN_MEANINGFUL_CHARS) {
+    for (let cut = name.length - 1; cut >= MIN_MEANINGFUL_CHARS; cut--) {
       if (cmFitText(span, box, name.slice(0, cut) + '…')) return true;
     }
   }
@@ -799,10 +812,21 @@ function renderInteractiveMap(campusCode, liveRooms) {
 
       const statusCls = STATUS_LABEL[mapRoomStatus(live)] || 'ok';
       div.className = 'cm-room cm-room-' + statusCls;
+      inner.appendChild(div); // must be attached before any scrollHeight/clientHeight measurement below —
+                               // an unattached element has no real layout box, so cmFitText's fit checks
+                               // were being measured against garbage values, not the room's actual size.
       const rrIcon = cmRestroomIcon(live.space);
       if (rrIcon) {
         div.classList.add('cm-restroom');
         div.innerHTML = `<i class="ti ${rrIcon} cm-icon"></i>`;
+      } else if (Math.min(w,h) < CM_ABSOLUTE_MIN_BOX) {
+        // Too small for any text to be legible, even a short room number —
+        // the room-number fallback in cmPickLabel is short enough that it
+        // technically "fits" almost any box by bounding-box math alone, so
+        // this catches what that check can't: boxes with no real room to
+        // begin with, before even attempting text.
+        div.innerHTML = `<i class="ti ${roomIcon(live)} cm-icon"></i>`;
+        div.classList.add('cm-icon-mode');
       } else {
         const span = document.createElement('span');
         span.className = 'cm-lbl';
@@ -819,7 +843,6 @@ function renderInteractiveMap(campusCode, liveRooms) {
         div.addEventListener('mouseenter', () => cmShowHover(live, statusCls, div));
         div.addEventListener('mouseleave', cmHideHover);
       }
-      inner.appendChild(div);
     });
   });
 }
