@@ -152,10 +152,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .wheel-wrap .node .lbl-wrap{display:none;flex-direction:column;align-items:center}
 .wheel-wrap .node.selected{z-index:4}
 .wheel-wrap .node.selected .lbl-wrap{display:flex}
-.wheel-wrap .node .lbl{font-size:9.5px;font-weight:700;color:var(--text);white-space:normal;word-break:break-word;
+.wheel-wrap .node .lbl{font-size:12px;font-weight:700;color:var(--text);white-space:normal;word-break:break-word;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  text-align:center;line-height:1.15;max-width:92px}
-.wheel-wrap .node .lbl-room{font-size:7px;font-weight:600;color:var(--muted);opacity:.75;margin-top:1px}
+  text-align:center;line-height:1.2;max-width:110px}
+.wheel-wrap .node .lbl-room{font-size:8.5px;font-weight:600;color:var(--muted);opacity:.75;margin-top:1px}
 .center-hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30%;height:30%;
   display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
   border-radius:50%;background:#fff;box-shadow:0 0 0 1px var(--border);padding:6%;z-index:3;overflow:hidden}
@@ -174,7 +174,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .hub-note{font-size:8.5px;color:var(--text);margin-top:6px;line-height:1.3}
 .hub-counts{font-size:8px;color:var(--muted);margin-top:4px}
 .wheel-hint{text-align:center;font-size:11.5px;color:var(--muted);margin-top:14px}
-.detail-card{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:16px;margin-top:24px}
+.detail-card{display:none;background:var(--card);border-radius:12px;border:1px solid var(--border);padding:16px;margin-top:24px}
+.detail-card.show{display:block}
 .detail-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .detail-icon{width:34px;height:34px;border-radius:9px;background:var(--lt);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--blue);flex-shrink:0}
 .detail-name{font-size:15px;font-weight:700}
@@ -186,18 +187,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .detail-note{font-size:12px;color:var(--text);margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .detail-counts{font-size:11.5px;color:var(--muted);margin-top:8px}
 @media (min-width:720px){
-  .center-hub{width:34%;height:34%;padding:5%}
+  .center-hub{width:46%;height:46%;padding:5%}
   .hub-inner{display:flex;flex-direction:column;align-items:center}
-  .hub-icon{font-size:24px}
-  .hub-name{font-size:13.5px;-webkit-line-clamp:3}
-  .hub-room{font-size:10.5px}
-  .hub-section{font-size:9px;margin-top:6px}
-  .hub-tracks{margin-top:9px;gap:14px}
-  .hub-track .dot{width:16px;height:16px}
-  .hub-track-label{font-size:7.5px}
-  .hub-track-text{font-size:8px}
+  .hub-icon{font-size:26px}
+  .hub-name{font-size:15px;-webkit-line-clamp:3}
+  .hub-room{font-size:11.5px}
+  .hub-section{font-size:9.5px;margin-top:7px}
+  .hub-tracks{margin-top:10px;gap:16px}
+  .hub-track .dot{width:17px;height:17px}
+  .hub-track-label{font-size:8px}
+  .hub-track-text{font-size:8.5px}
   .hub-extra{display:block}
-  .detail-card{display:none}
+  .detail-card.show{display:none}
 }
 
 /* ── bucketed status squares (alternate to the sectioned table, AMC) ── */
@@ -995,7 +996,11 @@ const WHEEL_GAP_DEG = 3.2;          // visual gap between section arcs
 // width:100%/height:100% while the HTML dot ring is repositioned in real
 // pixels on resize. Dot ring sits close to the band (small gap) so dots
 // can run larger without the ring feeling empty in the middle.
-const WHEEL_R_DOT = 39, WHEEL_R_BAND_OUT = 47, WHEEL_R_BAND_TEXT = 44.5;
+// Band sits inside the dot ring now (was outside) — this leaves the dots
+// nearer the rim, so the top pointer lines up more directly with the
+// selected space, and clears the outer edge for a larger selected-item
+// label instead of sharing that space with the band.
+const WHEEL_R_DOT = 43, WHEEL_R_BAND = 27;
 const WHEEL_CX = 50, WHEEL_CY = 50;
 
 let _wheelRooms = [];        // ordered rooms: section order, then sheet order within section
@@ -1015,7 +1020,7 @@ function buildAECWheel() {
       <div class="center-hub" id="wheelHub"></div>
     </div>
     <div class="wheel-hint">Drag the wheel to spin, or tap a space to jump to it</div>
-    <div class="detail-card" id="wheelDetailCard" style="display:none">
+    <div class="detail-card" id="wheelDetailCard">
       <div class="detail-hdr">
         <div class="detail-icon"><i id="wheelDetailIcon" class="ti ti-door"></i></div>
         <div>
@@ -1035,8 +1040,7 @@ function buildAECWheel() {
       </div>
       <div class="detail-counts" id="wheelDetailCounts" style="display:none"></div>
       <div class="detail-note" id="wheelDetailNote" style="display:none"></div>
-    </div>
-    ${INLINE_LEGEND}`;
+    </div>`;
 }
 
 function wheelPolar(cx, cy, r, angleDeg) {
@@ -1085,9 +1089,9 @@ function renderAECWheel(liveRooms) {
   ordered.forEach((sec, i) => {
     const { start, end } = _wheelSectionRange[sec];
     const fId = `wheelSecF${i}`, rId = `wheelSecR${i}`;
-    svg += `<path d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_OUT,start,end,true)}" fill="none" stroke="#1A2B3C" stroke-opacity="0.28" stroke-width="0.15"/>`;
-    svg += `<path id="${fId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_TEXT,start,end,true)}" fill="none"/>`;
-    svg += `<path id="${rId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_TEXT,start,end,false)}" fill="none"/>`;
+    svg += `<path d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND,start,end,true)}" fill="none" stroke="#1A2B3C" stroke-opacity="0.28" stroke-width="0.15"/>`;
+    svg += `<path id="${fId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND,start,end,true)}" fill="none"/>`;
+    svg += `<path id="${rId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND,start,end,false)}" fill="none"/>`;
     svg += `<text font-size="2.3" font-weight="500" letter-spacing="0.04" fill="#1A2B3C">
       <textPath id="wheelSecText${i}" href="#${fId}" startOffset="50%" text-anchor="middle">${sec.toUpperCase()}</textPath>
     </text>`;
@@ -1142,13 +1146,19 @@ function positionWheelNodes() {
     let delta = ((angle % 360) + 360) % 360;
     delta = Math.min(Math.abs(delta-270), 360-Math.abs(delta-270));
     if (delta < closestDelta){ closestDelta = delta; closestIdx = i; }
+  }
 
-    const closeness = Math.max(0, 1 - delta/14);
+  // Only the exact selected dot grows — no gradual size-up on its
+  // neighbors, which was making the ring harder to scan at a glance.
+  for (let i=0;i<n;i++){
+    const node = nodes[i];
+    if (!node) continue;
+    const isSelected = i === closestIdx;
     const dotEl = node.querySelector('.dot');
-    const sz = 9 + (22-9)*closeness;
-    dotEl.style.width = sz+'px'; dotEl.style.height = sz+'px';
-    dotEl.style.boxShadow = closeness>0.5 ? '0 0 0 3px rgba(0,94,158,'+(closeness*0.18)+'), 0 1px 2px rgba(0,0,0,.15)' : '0 1px 2px rgba(0,0,0,.15)';
-    node.classList.toggle('selected', closeness > 0.9);
+    dotEl.style.width = (isSelected ? 22 : 9) + 'px';
+    dotEl.style.height = (isSelected ? 22 : 9) + 'px';
+    dotEl.style.boxShadow = isSelected ? '0 0 0 3px rgba(0,94,158,.18), 0 1px 2px rgba(0,0,0,.15)' : '0 1px 2px rgba(0,0,0,.15)';
+    node.classList.toggle('selected', isSelected);
   }
 
   const bandGroup = document.getElementById('wheelBandGroup');
@@ -1197,8 +1207,8 @@ function updateWheelDetailCard() {
   const r = _wheelRooms[_wheelSelectedIdx];
   const card = document.getElementById('wheelDetailCard');
   if (!card) return;
-  if (!r) { card.style.display = 'none'; return; }
-  card.style.display = 'block';
+  card.classList.toggle('show', !!r);
+  if (!r) return;
   document.getElementById('wheelDetailIcon').className = 'ti ' + roomIcon(r);
   document.getElementById('wheelDetailName').textContent = r.space;
   document.getElementById('wheelDetailMeta').textContent = [r.roomNumber ? ('Room '+r.roomNumber) : null, r.section].filter(Boolean).join(' · ');
