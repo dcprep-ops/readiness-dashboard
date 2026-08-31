@@ -136,6 +136,70 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cm-hover-titlebar.hstatus-pending,.cm-sheet-titlebar.hstatus-pending{background:var(--pending-tint);color:var(--pending)}
 .row-note{font-size:12px;color:#64748b;margin-top:2px;line-height:1.4}
 
+/* ── AEC space wheel (replaces the interactive map for AEC only) ────────
+   Color is reserved for status (the dots + hub/detail track pills use the
+   existing .dot-ok/.dot-minor/etc classes already defined above). The
+   band, lines, and labels stay black/neutral on purpose. */
+.wheel-wrap{position:relative;width:100%;max-width:600px;aspect-ratio:1/1;margin:0 auto;touch-action:none;user-select:none}
+.wheel-wrap.dragging{cursor:grabbing}
+.wheel-wrap:not(.dragging){cursor:grab}
+.wheel-track{position:absolute;inset:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--border)}
+.band-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.wheel-pointer{position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:0;height:0;
+  border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid var(--gold);z-index:5;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}
+.wheel-wrap .node{position:absolute;top:0;left:0;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;z-index:2}
+.wheel-wrap .node .dot{box-shadow:0 1px 2px rgba(0,0,0,.15);transition:width .15s,height .15s,box-shadow .15s}
+.wheel-wrap .node .lbl-wrap{display:none;flex-direction:column;align-items:center}
+.wheel-wrap .node.selected{z-index:4}
+.wheel-wrap .node.selected .lbl-wrap{display:flex}
+.wheel-wrap .node .lbl{font-size:9.5px;font-weight:700;color:var(--text);white-space:normal;word-break:break-word;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  text-align:center;line-height:1.15;max-width:92px}
+.wheel-wrap .node .lbl-room{font-size:7px;font-weight:600;color:var(--muted);opacity:.75;margin-top:1px}
+.center-hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30%;height:30%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  border-radius:50%;background:#fff;box-shadow:0 0 0 1px var(--border);padding:6%;z-index:3;overflow:hidden}
+.hub-inner{display:none}
+.hub-icon{font-size:18px;color:var(--blue);margin-bottom:3px}
+.hub-name{font-size:10.5px;font-weight:700;color:var(--text);line-height:1.15;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hub-room{font-size:8.5px;color:var(--muted);margin-top:1px}
+.hub-extra{display:none}
+.hub-section{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:5px}
+.hub-tracks{display:flex;gap:10px;margin-top:8px}
+.hub-track{display:flex;flex-direction:column;align-items:center;gap:2px}
+.hub-track .dot{width:14px;height:14px}
+.hub-track-label{font-size:7px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.hub-track-text{font-size:7px;color:var(--text);font-weight:600}
+.hub-note{font-size:8.5px;color:var(--text);margin-top:6px;line-height:1.3}
+.hub-counts{font-size:8px;color:var(--muted);margin-top:4px}
+.wheel-hint{text-align:center;font-size:11.5px;color:var(--muted);margin-top:14px}
+.detail-card{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:16px;margin-top:24px}
+.detail-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.detail-icon{width:34px;height:34px;border-radius:9px;background:var(--lt);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--blue);flex-shrink:0}
+.detail-name{font-size:15px;font-weight:700}
+.detail-meta{font-size:11.5px;color:var(--muted)}
+.detail-rows{display:flex;gap:10px;margin-top:4px}
+.detail-row{flex:1;background:var(--bg);border-radius:8px;padding:9px 10px}
+.detail-row-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.detail-row-val{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
+.detail-note{font-size:12px;color:var(--text);margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.detail-counts{font-size:11.5px;color:var(--muted);margin-top:8px}
+@media (min-width:720px){
+  .center-hub{width:34%;height:34%;padding:5%}
+  .hub-inner{display:flex;flex-direction:column;align-items:center}
+  .hub-icon{font-size:24px}
+  .hub-name{font-size:13.5px;-webkit-line-clamp:3}
+  .hub-room{font-size:10.5px}
+  .hub-section{font-size:9px;margin-top:6px}
+  .hub-tracks{margin-top:9px;gap:14px}
+  .hub-track .dot{width:16px;height:16px}
+  .hub-track-label{font-size:7.5px}
+  .hub-track-text{font-size:8px}
+  .hub-extra{display:block}
+  .detail-card{display:none}
+}
+
 /* ── bucketed status squares (alternate to the sectioned table, AMC) ── */
 .sq-bucket{margin:0 0 26px}
 .sq-bucket-hdr{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:10px}
@@ -914,6 +978,303 @@ function cmOpenSheet(live, statusCls) {
 function cmCloseSheet() {
   document.getElementById('cmSheet').classList.remove('open');
   document.getElementById('cmSheetBackdrop').classList.remove('open');
+}
+
+// ── AEC space wheel ──────────────────────────────────────────────────────
+// Replaces the interactive floor map for AEC only. All spaces on one ring,
+// grouped into contiguous arcs by SECTION_ORDER, with a fine section-name
+// line curving through the outer band. Reuses dotClass/mapRoomStatus/
+// roomIcon/SECTION_ICON/SECTION_ORDER already defined above — no
+// duplicate status logic here, just layout and interaction.
+//
+// Two-pass build like the map: buildAECWheel() returns the HTML skeleton,
+// renderAECWheel() does the real layout work once it's in the DOM.
+const WHEEL_STATUS_TEXT = {'dot-ok':'Fully ready','dot-minor':'Minor items','dot-bad':'Not ready','dot-pending':'Pending SDO','dot-na':'N/A','dot-blank':'Not assessed'};
+const WHEEL_GAP_DEG = 3.2;          // visual gap between section arcs
+// Radii in a fixed 0–100 viewBox, so the SVG band scales for free via
+// width:100%/height:100% while the HTML dot ring is repositioned in real
+// pixels on resize. Dot ring sits close to the band (small gap) so dots
+// can run larger without the ring feeling empty in the middle.
+const WHEEL_R_DOT = 39, WHEEL_R_BAND_OUT = 47, WHEEL_R_BAND_TEXT = 44.5;
+const WHEEL_CX = 50, WHEEL_CY = 50;
+
+let _wheelRooms = [];        // ordered rooms: section order, then sheet order within section
+let _wheelRoomAngle = [];    // local (unrotated) angle per room, same order as _wheelRooms
+let _wheelSectionRange = {}; // section -> {start,end} local angle
+let _wheelRotation = 0;
+let _wheelSelectedIdx = 0;
+let _wheelAnimHandle = null;
+
+function buildAECWheel() {
+  return `
+    <div class="wheel-wrap" id="wheelWrap">
+      <div class="wheel-track"></div>
+      <svg class="band-svg" id="bandSvg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="wheel-pointer"></div>
+      <div id="wheelNodesLayer"></div>
+      <div class="center-hub" id="wheelHub"></div>
+    </div>
+    <div class="wheel-hint">Drag the wheel to spin, or tap a space to jump to it</div>
+    <div class="detail-card" id="wheelDetailCard" style="display:none">
+      <div class="detail-hdr">
+        <div class="detail-icon"><i id="wheelDetailIcon" class="ti ti-door"></i></div>
+        <div>
+          <div class="detail-name" id="wheelDetailName">—</div>
+          <div class="detail-meta" id="wheelDetailMeta">—</div>
+        </div>
+      </div>
+      <div class="detail-rows">
+        <div class="detail-row">
+          <div class="detail-row-label">Ops</div>
+          <div class="detail-row-val" id="wheelDetailOps">—</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-row-label">Tech</div>
+          <div class="detail-row-val" id="wheelDetailTech">—</div>
+        </div>
+      </div>
+      <div class="detail-counts" id="wheelDetailCounts" style="display:none"></div>
+      <div class="detail-note" id="wheelDetailNote" style="display:none"></div>
+    </div>
+    ${INLINE_LEGEND}`;
+}
+
+function wheelPolar(cx, cy, r, angleDeg) {
+  const rad = angleDeg * Math.PI/180;
+  return { x: cx + r*Math.cos(rad), y: cy + r*Math.sin(rad) };
+}
+function wheelArcPath(cx, cy, r, startA, endA, forward) {
+  const large = (endA-startA) <= 180 ? 0 : 1;
+  const p1 = wheelPolar(cx,cy,r,startA), p2 = wheelPolar(cx,cy,r,endA);
+  return forward
+    ? `M ${p1.x} ${p1.y} A ${r} ${r} 0 ${large} 1 ${p2.x} ${p2.y}`
+    : `M ${p2.x} ${p2.y} A ${r} ${r} 0 ${large} 0 ${p1.x} ${p1.y}`;
+}
+
+function renderAECWheel(liveRooms) {
+  const present = new Set(liveRooms.map(r => r.section));
+  const ordered = [...SECTION_ORDER.filter(s => present.has(s)), ...[...present].filter(s => !SECTION_ORDER.includes(s))];
+  _wheelRooms = ordered.flatMap(sec => liveRooms.filter(r => r.section === sec));
+
+  const n = _wheelRooms.length;
+  const nSections = ordered.length;
+  if (!n || !nSections) {
+    document.getElementById('wheelHub').innerHTML = '<div class="hub-inner"><div class="hub-name">No spaces found</div></div>';
+    return;
+  }
+  const itemStep = (360 - WHEEL_GAP_DEG*nSections) / n;
+
+  _wheelRoomAngle = [];
+  _wheelSectionRange = {};
+  let idx = 0;
+  ordered.forEach((sec, sIdx) => {
+    const items = liveRooms.filter(r => r.section === sec);
+    const secStart = -90 + idx*itemStep + sIdx*WHEEL_GAP_DEG;
+    items.forEach((r, j) => {
+      _wheelRoomAngle.push(secStart + j*itemStep);
+      idx++;
+    });
+    const secEnd = -90 + idx*itemStep + sIdx*WHEEL_GAP_DEG;
+    _wheelSectionRange[sec] = { start: secStart - itemStep*0.5, end: secEnd - itemStep*0.5 };
+  });
+
+  // Band: fine divider line + plain black curved label per section — no
+  // per-section color, status color is reserved for the dots.
+  const bandSvg = document.getElementById('bandSvg');
+  let svg = `<g id="wheelBandGroup">`;
+  ordered.forEach((sec, i) => {
+    const { start, end } = _wheelSectionRange[sec];
+    const fId = `wheelSecF${i}`, rId = `wheelSecR${i}`;
+    svg += `<path d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_OUT,start,end,true)}" fill="none" stroke="#1A2B3C" stroke-opacity="0.28" stroke-width="0.15"/>`;
+    svg += `<path id="${fId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_TEXT,start,end,true)}" fill="none"/>`;
+    svg += `<path id="${rId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_TEXT,start,end,false)}" fill="none"/>`;
+    svg += `<text font-size="2.3" font-weight="500" letter-spacing="0.04" fill="#1A2B3C">
+      <textPath id="wheelSecText${i}" href="#${fId}" startOffset="50%" text-anchor="middle">${sec.toUpperCase()}</textPath>
+    </text>`;
+  });
+  svg += `</g>`;
+  bandSvg.innerHTML = svg;
+
+  const nodesLayer = document.getElementById('wheelNodesLayer');
+  nodesLayer.innerHTML = '';
+  _wheelRooms.forEach((r, i) => {
+    const node = document.createElement('div');
+    node.className = 'node';
+    const cls = mapRoomStatus(r);
+    node.innerHTML = `<span class="dot ${cls}" style="width:9px;height:9px"></span>
+      <div class="lbl-wrap">
+        <span class="lbl">${r.space}</span>
+        ${r.roomNumber ? `<span class="lbl-room">${r.roomNumber}</span>` : ''}
+      </div>`;
+    node.onclick = (e) => { e.stopPropagation(); wheelSpinTo(i); };
+    nodesLayer.appendChild(node);
+  });
+
+  _wheelRotation = 0;
+  _wheelSelectedIdx = 0;
+  positionWheelNodes();
+  updateWheelHub();
+
+  wheelBindDrag();
+}
+
+function positionWheelNodes() {
+  const wrap = document.getElementById('wheelWrap');
+  if (!wrap) return;
+  const size = wrap.getBoundingClientRect().width || 400;
+  const cx = size/2, cy = size/2;
+  const R = size * (WHEEL_R_DOT/100);
+  const n = _wheelRooms.length;
+  if (!n) return;
+
+  let closestIdx = 0, closestDelta = Infinity;
+  const nodes = document.getElementById('wheelNodesLayer').children;
+  for (let i=0;i<n;i++){
+    const angle = _wheelRoomAngle[i] + _wheelRotation;
+    const rad = angle * Math.PI/180;
+    const x = cx + R*Math.cos(rad);
+    const y = cy + R*Math.sin(rad);
+    const node = nodes[i];
+    if (!node) continue;
+    node.style.left = x+'px';
+    node.style.top = y+'px';
+
+    let delta = ((angle % 360) + 360) % 360;
+    delta = Math.min(Math.abs(delta-270), 360-Math.abs(delta-270));
+    if (delta < closestDelta){ closestDelta = delta; closestIdx = i; }
+
+    const closeness = Math.max(0, 1 - delta/14);
+    const dotEl = node.querySelector('.dot');
+    const sz = 9 + (22-9)*closeness;
+    dotEl.style.width = sz+'px'; dotEl.style.height = sz+'px';
+    dotEl.style.boxShadow = closeness>0.5 ? '0 0 0 3px rgba(0,94,158,'+(closeness*0.18)+'), 0 1px 2px rgba(0,0,0,.15)' : '0 1px 2px rgba(0,0,0,.15)';
+    node.classList.toggle('selected', closeness > 0.9);
+  }
+
+  const bandGroup = document.getElementById('wheelBandGroup');
+  if (bandGroup) bandGroup.setAttribute('transform', `rotate(${_wheelRotation} ${WHEEL_CX} ${WHEEL_CY})`);
+  Object.keys(_wheelSectionRange).forEach((sec, i) => {
+    const { start, end } = _wheelSectionRange[sec];
+    const mid = ((start+end)/2 + _wheelRotation) % 360;
+    const midNorm = ((mid % 360)+360)%360;
+    const bottomHalf = midNorm > 0 && midNorm < 180;
+    const tp = document.getElementById(`wheelSecText${i}`);
+    if (tp) tp.setAttribute('href', bottomHalf ? `#wheelSecR${i}` : `#wheelSecF${i}`);
+  });
+
+  if (closestIdx !== _wheelSelectedIdx){
+    _wheelSelectedIdx = closestIdx;
+    updateWheelHub();
+  }
+}
+
+function updateWheelHub() {
+  const hub = document.getElementById('wheelHub');
+  const r = _wheelRooms[_wheelSelectedIdx];
+  if (!hub || !r) return;
+  const opsCls = dotClass(r.SDO ? r.SDO.assessment : null);
+  const techCls = dotClass(r.tech ? r.tech.assessment : null);
+  const counts = (r.deskCount || r.chairCount) ? `${r.deskCount || '—'} desks · ${r.chairCount || '—'} chairs` : '';
+  hub.innerHTML = `
+    <div class="hub-inner">
+      <i class="hub-icon ti ${roomIcon(r)}"></i>
+      <div class="hub-name">${r.space}</div>
+      <div class="hub-room">${r.roomNumber ? 'Room '+r.roomNumber : ''}</div>
+      <div class="hub-extra">
+        <div class="hub-section">${r.section || ''}</div>
+        <div class="hub-tracks">
+          <div class="hub-track"><span class="hub-track-label">Ops</span><span class="dot ${opsCls}"></span><span class="hub-track-text">${WHEEL_STATUS_TEXT[opsCls]}</span></div>
+          <div class="hub-track"><span class="hub-track-label">Tech</span><span class="dot ${techCls}"></span><span class="hub-track-text">${WHEEL_STATUS_TEXT[techCls]}</span></div>
+        </div>
+        ${r.notes ? `<div class="hub-note">${r.notes}</div>` : ''}
+        ${counts ? `<div class="hub-counts">${counts}</div>` : ''}
+      </div>
+    </div>`;
+  updateWheelDetailCard();
+}
+
+function updateWheelDetailCard() {
+  const r = _wheelRooms[_wheelSelectedIdx];
+  const card = document.getElementById('wheelDetailCard');
+  if (!card) return;
+  if (!r) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById('wheelDetailIcon').className = 'ti ' + roomIcon(r);
+  document.getElementById('wheelDetailName').textContent = r.space;
+  document.getElementById('wheelDetailMeta').textContent = [r.roomNumber ? ('Room '+r.roomNumber) : null, r.section].filter(Boolean).join(' · ');
+
+  const opsCls = dotClass(r.SDO ? r.SDO.assessment : null);
+  const techCls = dotClass(r.tech ? r.tech.assessment : null);
+  document.getElementById('wheelDetailOps').innerHTML = `<span class="dot ${opsCls}" style="width:14px;height:14px"></span> ${WHEEL_STATUS_TEXT[opsCls]}`;
+  document.getElementById('wheelDetailTech').innerHTML = `<span class="dot ${techCls}" style="width:14px;height:14px"></span> ${WHEEL_STATUS_TEXT[techCls]}`;
+
+  const countsEl = document.getElementById('wheelDetailCounts');
+  if (r.deskCount || r.chairCount) {
+    countsEl.style.display = 'block';
+    countsEl.textContent = `${r.deskCount || '—'} desks · ${r.chairCount || '—'} chairs`;
+  } else countsEl.style.display = 'none';
+
+  const noteEl = document.getElementById('wheelDetailNote');
+  if (r.notes) { noteEl.style.display = 'block'; noteEl.textContent = r.notes; }
+  else noteEl.style.display = 'none';
+}
+
+function wheelSpinTo(idx) {
+  const target = -90 - _wheelRoomAngle[idx];
+  let normTarget = ((target % 360)+360)%360;
+  let normCurrent = ((_wheelRotation % 360)+360)%360;
+  let delta = normTarget - normCurrent;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  wheelAnimateRotation(_wheelRotation + delta);
+}
+
+function wheelAnimateRotation(target) {
+  if (_wheelAnimHandle) cancelAnimationFrame(_wheelAnimHandle);
+  const start = _wheelRotation, dur = 420, t0 = performance.now();
+  function step(t) {
+    const p = Math.min(1,(t-t0)/dur);
+    const eased = 1 - Math.pow(1-p,3);
+    _wheelRotation = start + (target-start)*eased;
+    positionWheelNodes();
+    if (p<1) _wheelAnimHandle = requestAnimationFrame(step);
+  }
+  _wheelAnimHandle = requestAnimationFrame(step);
+}
+
+let _wheelDragBound = false;
+function wheelBindDrag() {
+  if (_wheelDragBound) return; // wheelWrap element persists across AEC re-renders within a session, only bind once
+  _wheelDragBound = true;
+  const wrap = document.getElementById('wheelWrap');
+  let dragging = false, dragStartAngle = 0, dragStartRotation = 0, pointerId = null;
+  function angleFromEvent(e) {
+    const rect = wrap.getBoundingClientRect();
+    const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+    return Math.atan2(e.clientY-cy, e.clientX-cx) * 180/Math.PI;
+  }
+  wrap.addEventListener('pointerdown', (e)=>{
+    if (_wheelAnimHandle) cancelAnimationFrame(_wheelAnimHandle);
+    dragging = true; pointerId = e.pointerId;
+    wrap.setPointerCapture(pointerId);
+    wrap.classList.add('dragging');
+    dragStartAngle = angleFromEvent(e);
+    dragStartRotation = _wheelRotation;
+  });
+  wrap.addEventListener('pointermove', (e)=>{
+    if (!dragging) return;
+    const a = angleFromEvent(e);
+    _wheelRotation = dragStartRotation + (a - dragStartAngle);
+    positionWheelNodes();
+  });
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    wrap.classList.remove('dragging');
+    wheelSpinTo(_wheelSelectedIdx);
+  }
+  wrap.addEventListener('pointerup', endDrag);
+  wrap.addEventListener('pointercancel', endDrag);
 }
 
 function buildEECViewToggle() {
@@ -2082,12 +2443,18 @@ async function loadCampusPanel(code) {
       // Bucketed status squares — see buildBucketedSquares() for why BMC
       // gets its own layout (college-named classrooms).
       bodyHtml = buildCampusProgress(data.rooms) + buildBucketedSquares(data.rooms);
-    } else if (code === 'AEC' || code === 'AMC') {
-      // Interactive floor map — AEC and AMC share one physical building,
-      // so this map replaces both campuses' tile view. Geometry lives in
-      // CAMPUS_MAP_GEOMETRY; renderInteractiveMap() does the actual DOM
-      // work after this HTML is in the page (see the post-render hook
-      // below, same pattern as EMC's map).
+    } else if (code === 'AEC') {
+      // Spin-wheel space selector — replaces the interactive floor map for
+      // AEC only (AMC keeps the map below). All spaces on one ring,
+      // grouped into contiguous arcs by SECTION_ORDER; buildAECWheel()
+      // returns the skeleton, renderAECWheel() does the real layout work
+      // once it's actually in the DOM (same two-pass pattern as the map).
+      bodyHtml = buildCampusProgress(data.rooms) + buildAECWheel();
+    } else if (code === 'AMC') {
+      // Interactive floor map. Geometry lives in CAMPUS_MAP_GEOMETRY;
+      // renderInteractiveMap() does the actual DOM work after this HTML is
+      // in the page (see the post-render hook below, same pattern as
+      // EMC's map).
       bodyHtml = buildCampusProgress(data.rooms) + buildInteractiveMap(code);
     } else {
       bodyHtml = buildCampusProgress(data.rooms) + emcHtml + buildSectionedTables(data.rooms);
@@ -2100,7 +2467,11 @@ async function loadCampusPanel(code) {
       // dots already show today's live combined status; the slider then
       // takes over once history is in.
       fetchReadinessHistory().then(h => initEMCTimeline(h.rows || [], emcNodes)).catch(() => {});
-    } else if (code === 'AEC' || code === 'AMC') {
+    } else if (code === 'AEC') {
+      // Wheel container now exists in the DOM — safe to measure its real
+      // width and lay out the ring.
+      renderAECWheel(data.rooms);
+    } else if (code === 'AMC') {
       // Container divs from buildInteractiveMap() now exist in the DOM —
       // safe to measure their real width and actually place rooms.
       renderInteractiveMap(code, data.rooms);
@@ -2211,9 +2582,9 @@ function animateBurndownLine() {
 // ── Tab switching ─────────────────────────────────────────────────────────────
 const loaded = new Set();
 
-// Re-render the interactive map on resize, using the cached data rather
-// than refetching — same debounce pattern as positionLabel's resize
-// listener elsewhere in this file.
+// Re-render the interactive map / wheel on resize, using the cached data
+// rather than refetching — same debounce pattern as positionLabel's
+// resize listener elsewhere in this file.
 let _cmResizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(_cmResizeTimer);
@@ -2221,8 +2592,10 @@ window.addEventListener('resize', () => {
     const activePanel = document.querySelector('.tab-panel.active');
     if (!activePanel) return;
     const code = activePanel.id.replace('panel-', '');
-    if ((code === 'AEC' || code === 'AMC') && _campusCache[code]) {
+    if (code === 'AMC' && _campusCache[code]) {
       renderInteractiveMap(code, _campusCache[code].data.rooms);
+    } else if (code === 'AEC' && _campusCache[code]) {
+      positionWheelNodes();
     }
   }, 150);
 });
