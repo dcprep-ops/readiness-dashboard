@@ -140,25 +140,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
    Color is reserved for status (the dots + hub/detail track pills use the
    existing .dot-ok/.dot-minor/etc classes already defined above). The
    band, lines, and labels stay black/neutral on purpose. */
+.wheel-status-strip{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.wheel-status-chip{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text)}
+.wheel-status-chip .dot{width:9px;height:9px}
+.wheel-status-chip .n{color:var(--muted);font-weight:500}
+.wheel-selected-label{text-align:center;margin-bottom:10px}
+.wheel-selected-name{font-size:16px;font-weight:700;color:var(--text);line-height:1.25}
+.wheel-selected-room{font-size:12px;color:var(--muted);margin-top:1px}
 .wheel-wrap{position:relative;width:100%;max-width:600px;aspect-ratio:1/1;margin:0 auto;touch-action:none;user-select:none}
 .wheel-wrap.dragging{cursor:grabbing}
 .wheel-wrap:not(.dragging){cursor:grab}
-.wheel-track{position:absolute;inset:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--border)}
+.wheel-track{position:absolute;inset:0;border-radius:50%;background:var(--bg);box-shadow:inset 0 0 0 1px var(--border)}
 .band-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .wheel-pointer{position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:0;height:0;
   border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid var(--gold);z-index:5;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}
-.wheel-wrap .node{position:absolute;top:0;left:0;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;z-index:2}
+.wheel-wrap .node{position:absolute;top:0;left:0;transform:translate(-50%,-50%);cursor:pointer;z-index:2}
 .wheel-wrap .node .dot{box-shadow:0 1px 2px rgba(0,0,0,.15);transition:width .15s,height .15s,box-shadow .15s}
-.wheel-wrap .node .lbl-wrap{display:none;flex-direction:column;align-items:center}
 .wheel-wrap .node.selected{z-index:4}
-.wheel-wrap .node.selected .lbl-wrap{display:flex}
-.wheel-wrap .node .lbl{font-size:12px;font-weight:700;color:var(--text);white-space:normal;word-break:break-word;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  text-align:center;line-height:1.2;max-width:110px}
-.wheel-wrap .node .lbl-room{font-size:8.5px;font-weight:600;color:var(--muted);opacity:.75;margin-top:1px}
-.center-hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30%;height:30%;
+.center-hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:75%;height:75%;
   display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-  border-radius:50%;background:#fff;box-shadow:0 0 0 1px var(--border);padding:6%;z-index:3;overflow:hidden}
+  border-radius:50%;background:#fff;box-shadow:0 0 0 1px var(--border);padding:4%;z-index:3;overflow:hidden}
 .hub-inner{display:none}
 .hub-icon{font-size:18px;color:var(--blue);margin-bottom:3px}
 .hub-name{font-size:10.5px;font-weight:700;color:var(--text);line-height:1.15;
@@ -187,7 +188,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .detail-note{font-size:12px;color:var(--text);margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .detail-counts{font-size:11.5px;color:var(--muted);margin-top:8px}
 @media (min-width:720px){
-  .center-hub{width:46%;height:46%;padding:5%}
   .hub-inner{display:flex;flex-direction:column;align-items:center}
   .hub-icon{font-size:26px}
   .hub-name{font-size:15px;-webkit-line-clamp:3}
@@ -994,13 +994,10 @@ const WHEEL_STATUS_TEXT = {'dot-ok':'Fully ready','dot-minor':'Minor items','dot
 const WHEEL_GAP_DEG = 3.2;          // visual gap between section arcs
 // Radii in a fixed 0–100 viewBox, so the SVG band scales for free via
 // width:100%/height:100% while the HTML dot ring is repositioned in real
-// pixels on resize. Dot ring sits close to the band (small gap) so dots
-// can run larger without the ring feeling empty in the middle.
-// Band sits inside the dot ring now (was outside) — this leaves the dots
-// nearer the rim, so the top pointer lines up more directly with the
-// selected space, and clears the outer edge for a larger selected-item
-// label instead of sharing that space with the band.
-const WHEEL_R_DOT = 43, WHEEL_R_BAND = 27;
+// pixels on resize. Donut hole (hub) is 75% of the radius, so the ring —
+// label, line, dots — fits in the remaining 25%. Label sits inside
+// (smaller radius than) the fine divider line; dots sit outermost.
+const WHEEL_R_BAND_TEXT = 39, WHEEL_R_BAND_LINE = 42, WHEEL_R_DOT = 45.5;
 const WHEEL_CX = 50, WHEEL_CY = 50;
 
 let _wheelRooms = [];        // ordered rooms: section order, then sheet order within section
@@ -1012,6 +1009,11 @@ let _wheelAnimHandle = null;
 
 function buildAECWheel() {
   return `
+    <div class="wheel-status-strip" id="wheelStatusStrip"></div>
+    <div class="wheel-selected-label" id="wheelSelectedLabel">
+      <div class="wheel-selected-name" id="wheelSelectedName">—</div>
+      <div class="wheel-selected-room" id="wheelSelectedRoom"></div>
+    </div>
     <div class="wheel-wrap" id="wheelWrap">
       <div class="wheel-track"></div>
       <svg class="band-svg" id="bandSvg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
@@ -1055,7 +1057,20 @@ function wheelArcPath(cx, cy, r, startA, endA, forward) {
     : `M ${p2.x} ${p2.y} A ${r} ${r} 0 ${large} 0 ${p1.x} ${p1.y}`;
 }
 
+function buildWheelStatusStrip(rooms) {
+  const counts = {'dot-ok':0,'dot-minor':0,'dot-bad':0,'dot-pending':0,'dot-blank':0,'dot-na':0};
+  rooms.forEach(r => counts[mapRoomStatus(r)]++);
+  const order = [['dot-ok','Ready'],['dot-minor','Minor'],['dot-pending','Pending'],['dot-bad','Not ready'],['dot-blank','Not assessed']];
+  const strip = document.getElementById('wheelStatusStrip');
+  if (!strip) return;
+  strip.innerHTML = order.filter(([c])=>counts[c]>0).map(([c,label]) =>
+    `<span class="wheel-status-chip"><span class="dot ${c}"></span>${label} <span class="n">${counts[c]}</span></span>`
+  ).join('');
+}
+
 function renderAECWheel(liveRooms) {
+  buildWheelStatusStrip(liveRooms);
+
   const present = new Set(liveRooms.map(r => r.section));
   const ordered = [...SECTION_ORDER.filter(s => present.has(s)), ...[...present].filter(s => !SECTION_ORDER.includes(s))];
   _wheelRooms = ordered.flatMap(sec => liveRooms.filter(r => r.section === sec));
@@ -1082,18 +1097,25 @@ function renderAECWheel(liveRooms) {
     _wheelSectionRange[sec] = { start: secStart - itemStep*0.5, end: secEnd - itemStep*0.5 };
   });
 
-  // Band: fine divider line + plain black curved label per section — no
-  // per-section color, status color is reserved for the dots.
+  // Band: fine divider line, sitting just inside the dots, plus a
+  // light-weight curved label sitting inside that line (smaller radius,
+  // not on top of it). Font-size scales per section to its own arc
+  // length so a short section (fewer spaces) doesn't crowd its label —
+  // a fixed size that happened to fit the widest section wouldn't
+  // necessarily fit the narrowest one.
   const bandSvg = document.getElementById('bandSvg');
   let svg = `<g id="wheelBandGroup">`;
   ordered.forEach((sec, i) => {
     const { start, end } = _wheelSectionRange[sec];
     const fId = `wheelSecF${i}`, rId = `wheelSecR${i}`;
-    svg += `<path d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND,start,end,true)}" fill="none" stroke="#1A2B3C" stroke-opacity="0.28" stroke-width="0.15"/>`;
-    svg += `<path id="${fId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND,start,end,true)}" fill="none"/>`;
-    svg += `<path id="${rId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND,start,end,false)}" fill="none"/>`;
-    svg += `<text font-size="2.3" font-weight="500" letter-spacing="0.04" fill="#1A2B3C">
-      <textPath id="wheelSecText${i}" href="#${fId}" startOffset="50%" text-anchor="middle">${sec.toUpperCase()}</textPath>
+    const arcLen = (end-start) * (Math.PI/180) * WHEEL_R_BAND_TEXT;
+    const label = sec.toUpperCase();
+    const fontSize = Math.min(2.4, Math.max(1.5, arcLen / (label.length * 0.62)));
+    svg += `<path d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_LINE,start,end,true)}" fill="none" stroke="#1A2B3C" stroke-opacity="0.28" stroke-width="0.15"/>`;
+    svg += `<path id="${fId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_TEXT,start,end,true)}" fill="none"/>`;
+    svg += `<path id="${rId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_TEXT,start,end,false)}" fill="none"/>`;
+    svg += `<text font-size="${fontSize.toFixed(2)}" font-weight="300" letter-spacing="0.03" fill="#1A2B3C">
+      <textPath id="wheelSecText${i}" href="#${fId}" startOffset="50%" text-anchor="middle">${label}</textPath>
     </text>`;
   });
   svg += `</g>`;
@@ -1105,11 +1127,7 @@ function renderAECWheel(liveRooms) {
     const node = document.createElement('div');
     node.className = 'node';
     const cls = mapRoomStatus(r);
-    node.innerHTML = `<span class="dot ${cls}" style="width:9px;height:9px"></span>
-      <div class="lbl-wrap">
-        <span class="lbl">${r.space}</span>
-        ${r.roomNumber ? `<span class="lbl-room">${r.roomNumber}</span>` : ''}
-      </div>`;
+    node.innerHTML = `<span class="dot ${cls}" style="width:9px;height:9px"></span>`;
     node.onclick = (e) => { e.stopPropagation(); wheelSpinTo(i); };
     nodesLayer.appendChild(node);
   });
@@ -1178,9 +1196,22 @@ function positionWheelNodes() {
   }
 }
 
+// The selected space's name shows above the wheel (above the pointer),
+// not on the ring itself — the ring only ever shows dots now.
+function updateWheelSelectedLabel() {
+  const r = _wheelRooms[_wheelSelectedIdx];
+  const nameEl = document.getElementById('wheelSelectedName');
+  const roomEl = document.getElementById('wheelSelectedRoom');
+  if (!nameEl || !roomEl) return;
+  if (!r) { nameEl.textContent = '—'; roomEl.textContent = ''; return; }
+  nameEl.textContent = r.space;
+  roomEl.textContent = r.roomNumber ? 'Room ' + r.roomNumber : '';
+}
+
 function updateWheelHub() {
   const hub = document.getElementById('wheelHub');
   const r = _wheelRooms[_wheelSelectedIdx];
+  updateWheelSelectedLabel();
   if (!hub || !r) return;
   const opsCls = dotClass(r.SDO ? r.SDO.assessment : null);
   const techCls = dotClass(r.tech ? r.tech.assessment : null);
