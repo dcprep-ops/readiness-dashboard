@@ -12,6 +12,10 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="share.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons-300.min.css">
+<!-- d3 (hierarchy + pack only, in practice) — added for the AMC bubble
+     view's circle-packing layout. Nothing else in this file used an
+     external JS library before this. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <style>
 :root{
   --blue:#005E9E;--blue-web:#0083C4;--gold:#E5A810;
@@ -148,14 +152,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .wheel-selected-name{font-size:16px;font-weight:700;color:var(--text);line-height:1.25}
 .wheel-selected-room{font-size:12px;color:var(--muted);margin-top:1px}
 .wheel-wrap{position:relative;width:100%;max-width:600px;aspect-ratio:1/1;margin:0 auto;touch-action:none;user-select:none}
+@media (max-width:719px){
+  /* Shrink the wheel on small screens, using viewport height (not just
+     width), so the circle and the card below it can both fit in view
+     together without scrolling on a typical phone. */
+  .wheel-wrap{max-width:min(300px, 42vh)}
+}
 .wheel-wrap.dragging{cursor:grabbing}
 .wheel-wrap:not(.dragging){cursor:grab}
 .wheel-track{position:absolute;inset:0;border-radius:50%;background:var(--bg);box-shadow:inset 0 0 0 1px var(--border)}
 .band-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .wheel-pointer{position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:0;height:0;
   border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid var(--gold);z-index:5;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}
-.wheel-wrap .node{position:absolute;top:0;left:0;transform:translate(-50%,-50%);cursor:pointer;z-index:2}
-.wheel-wrap .node .dot{box-shadow:0 1px 2px rgba(0,0,0,.15);transition:width .15s,height .15s,box-shadow .15s}
+.wheel-wrap .node{position:absolute;top:0;left:0;transform:translate(-50%,-50%);cursor:pointer;z-index:2;
+  display:flex;align-items:center;justify-content:center}
+.wheel-wrap .node .dot{display:block;box-shadow:0 1px 2px rgba(0,0,0,.15);transition:width .15s,height .15s,box-shadow .15s}
 .wheel-wrap .node.selected{z-index:4}
 .center-hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:75%;height:75%;
   display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
@@ -200,6 +211,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .hub-extra{display:block}
   .detail-card.show{display:none}
 }
+
+/* ── AMC space bubbles (replaces the interactive map for AMC only) ──────
+   Status colors are softened toward white (see AMC_STATUS_FILL below) so
+   they read clearly without being visually loud. Text color per bubble
+   is computed from actual contrast against that bubble's background —
+   see amcTextColorFor() — not hardcoded, since a fixed white/black
+   choice breaks depending on which status color is in play. */
+.amc-status-strip{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.amc-status-chip{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text)}
+.amc-status-chip .dot{width:9px;height:9px}
+.amc-status-chip .n{color:var(--muted);font-weight:500}
+.amc-bubble-field{position:relative;width:100%;height:1300px;border:1px solid var(--border);border-radius:14px;background:var(--bg)}
+.amc-bubble{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;
+  cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);transition:box-shadow .15s,transform .15s;overflow:hidden}
+.amc-bubble:hover{box-shadow:0 4px 10px rgba(0,0,0,.18);transform:scale(1.03);z-index:10}
+.amc-bubble-label{font-weight:400;line-height:1.15;overflow-wrap:normal;word-break:keep-all;
+  display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden}
+.amc-popup-overlay{display:none;position:fixed;inset:0;background:rgba(26,43,60,.35);z-index:50;align-items:center;justify-content:center;padding:20px}
+.amc-popup-overlay.show{display:flex}
+.amc-popup{background:#fff;border-radius:14px;max-width:360px;width:100%;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.2);position:relative}
+.amc-popup-close{position:absolute;top:12px;right:12px;width:26px;height:26px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--muted)}
+.amc-popup-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-right:24px}
+.amc-popup-icon{width:36px;height:36px;border-radius:10px;background:var(--lt);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--blue);flex-shrink:0}
+.amc-popup-name{font-size:16px;font-weight:700}
+.amc-popup-meta{font-size:12px;color:var(--muted)}
+.amc-popup-rows{display:flex;gap:10px;margin-bottom:10px}
+.amc-popup-row{flex:1;background:var(--bg);border-radius:8px;padding:10px 11px}
+.amc-popup-row-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.amc-popup-row-val{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.amc-popup-note{font-size:12.5px;color:var(--text);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);line-height:1.4}
+.amc-popup-counts{font-size:12px;color:var(--muted);margin-top:8px}
 
 /* ── bucketed status squares (alternate to the sectioned table, AMC) ── */
 .sq-bucket{margin:0 0 26px}
@@ -1111,9 +1153,15 @@ function renderAECWheel(liveRooms) {
     const arcLen = (end-start) * (Math.PI/180) * WHEEL_R_BAND_TEXT;
     const label = sec.toUpperCase();
     const fontSize = Math.min(2.4, Math.max(1.5, arcLen / (label.length * 0.62)));
+    // The reverse-direction path (used for labels flipped into the bottom
+    // half so they stay upright) renders text on the opposite side of its
+    // baseline — letters extend inward toward the hub instead of outward.
+    // Nudge that path's radius out by roughly the label's height so
+    // flipped text doesn't creep into the hub.
+    const revRadius = WHEEL_R_BAND_TEXT + fontSize * 0.8;
     svg += `<path d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_LINE,start,end,true)}" fill="none" stroke="#1A2B3C" stroke-opacity="0.28" stroke-width="0.15"/>`;
     svg += `<path id="${fId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_TEXT,start,end,true)}" fill="none"/>`;
-    svg += `<path id="${rId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,WHEEL_R_BAND_TEXT,start,end,false)}" fill="none"/>`;
+    svg += `<path id="${rId}" d="${wheelArcPath(WHEEL_CX,WHEEL_CY,revRadius,start,end,false)}" fill="none"/>`;
     svg += `<text font-size="${fontSize.toFixed(2)}" font-weight="300" letter-spacing="0.03" fill="#1A2B3C">
       <textPath id="wheelSecText${i}" href="#${fId}" startOffset="50%" text-anchor="middle">${label}</textPath>
     </text>`;
@@ -1316,6 +1364,185 @@ function wheelBindDrag() {
   }
   wrap.addEventListener('pointerup', endDrag);
   wrap.addEventListener('pointercancel', endDrag);
+}
+
+// ── AMC space bubbles ────────────────────────────────────────────────────
+// Replaces the interactive floor map for AMC only. Reuses dotClass/
+// mapRoomStatus/roomIcon already defined above — no duplicate status
+// logic here, just layout, sizing, and contrast.
+//
+// Colors here are intentionally separate from the shared .dot-ok/etc CSS
+// classes used elsewhere (AEC wheel, sectioned tables) — these are
+// softened toward white specifically for this whimsical bubble view, and
+// applying that globally would unintentionally mute status colors
+// dashboard-wide. Kept as inline-styled hex values, not a shared class.
+const AMC_STATUS_FILL = {'dot-ok':'#A2DAB7','dot-minor':'#F5DC9F','dot-bad':'#F1A8A8','dot-pending':'#378ADD','dot-blank':'#B8C4CE','dot-na':'#EBF3FB'};
+const AMC_STATUS_TEXT = {'dot-ok':'Fully ready','dot-minor':'Minor items','dot-bad':'Not ready','dot-pending':'Pending SDO','dot-blank':'Not assessed','dot-na':'N/A'};
+
+// Text color is decided by comparing the actual contrast ratio of black
+// vs. white against each bubble's background, not a fixed choice — a
+// naive "luminance > 0.5" cutoff gets this wrong for some of these
+// colors (tested: white on the pending blue only reaches ~3.6:1, which
+// fails WCAG even for large bold text, while black reaches ~5.8:1).
+function amcHexToRgb(hex){ hex = hex.replace('#',''); return [0,2,4].map(i => parseInt(hex.substr(i,2),16)); }
+function amcRelLuminance(hex){
+  const [r,g,b] = amcHexToRgb(hex).map(c => { c/=255; return c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); });
+  return 0.2126*r + 0.7152*g + 0.0722*b;
+}
+function amcContrastRatio(L1, L2){ const hi = Math.max(L1,L2), lo = Math.min(L1,L2); return (hi+0.05)/(lo+0.05); }
+function amcTextColorFor(bgHex){
+  const Lbg = amcRelLuminance(bgHex);
+  const cBlack = amcContrastRatio(Lbg, 0), cWhite = amcContrastRatio(Lbg, 1);
+  return cBlack >= cWhite ? '#1A2B3C' : '#ffffff';
+}
+
+// Bubble size is derived from the space's own name, not the other way
+// around: font stays constant (regular weight, one size for every
+// bubble — no shrinking to fit), and the bubble grows to hold it.
+// requiredDiameter() simulates a real greedy word-wrap (never splits a
+// word) and binary-searches for the smallest diameter where (a) the
+// longest single word fits on a line by itself and (b) the wrapped text
+// fits vertically. Classrooms get a further size bonus from real seat
+// capacity on top of that.
+const AMC_LABEL_FONT_SIZE = 13, AMC_LABEL_CHAR_WIDTH = 0.50, AMC_LABEL_LINE_HEIGHT = 1.2, AMC_LABEL_PAD_FRAC = 0.66;
+function amcRequiredDiameter(text){
+  const words = text.split(' ');
+  const longestWordLen = Math.max(...words.map(w => w.length));
+  let lo = 20, hi = 500;
+  for (let i=0; i<40; i++){
+    const mid = (lo+hi)/2;
+    const usable = mid * AMC_LABEL_PAD_FRAC;
+    const longestWordW = longestWordLen * AMC_LABEL_FONT_SIZE * AMC_LABEL_CHAR_WIDTH;
+    if (longestWordW > usable) { lo = mid; continue; }
+    let lines = 1, curLen = 0;
+    for (const w of words) {
+      const sep = curLen > 0 ? 1 : 0;
+      const candidateLen = curLen + sep + w.length;
+      if (candidateLen * AMC_LABEL_FONT_SIZE * AMC_LABEL_CHAR_WIDTH <= usable) {
+        curLen = candidateLen;
+      } else {
+        lines++;
+        curLen = w.length;
+      }
+    }
+    const textH = lines * AMC_LABEL_FONT_SIZE * AMC_LABEL_LINE_HEIGHT;
+    if (textH <= usable) { hi = mid; } else { lo = mid; }
+  }
+  return hi;
+}
+function amcBubbleValue(r){
+  let d = amcRequiredDiameter(r.space);
+  const chairs = parseInt(r.chairCount) || 0;
+  if (chairs > 0) d += Math.min(30, chairs*0.6);
+  const radius = Math.max(30, d/2);
+  return radius*radius; // squared: d3.pack() sizes circles by area, not radius
+}
+
+function buildAMCBubbles() {
+  return `
+    <div class="amc-status-strip" id="amcStatusStrip"></div>
+    <div class="amc-bubble-field" id="amcBubbleField"></div>
+    <div class="amc-popup-overlay" id="amcPopupOverlay">
+      <div class="amc-popup">
+        <div class="amc-popup-close" id="amcPopupClose">&#10005;</div>
+        <div class="amc-popup-hdr">
+          <div class="amc-popup-icon"><i id="amcPopupIcon" class="ti ti-door"></i></div>
+          <div>
+            <div class="amc-popup-name" id="amcPopupName">—</div>
+            <div class="amc-popup-meta" id="amcPopupMeta">—</div>
+          </div>
+        </div>
+        <div class="amc-popup-rows">
+          <div class="amc-popup-row">
+            <div class="amc-popup-row-label">Ops</div>
+            <div class="amc-popup-row-val" id="amcPopupOps">—</div>
+          </div>
+          <div class="amc-popup-row">
+            <div class="amc-popup-row-label">Tech</div>
+            <div class="amc-popup-row-val" id="amcPopupTech">—</div>
+          </div>
+        </div>
+        <div class="amc-popup-counts" id="amcPopupCounts" style="display:none"></div>
+        <div class="amc-popup-note" id="amcPopupNote" style="display:none"></div>
+      </div>
+    </div>`;
+}
+
+function amcBuildStatusStrip(rooms){
+  const counts = {'dot-ok':0,'dot-minor':0,'dot-bad':0,'dot-pending':0,'dot-blank':0,'dot-na':0};
+  rooms.forEach(r => counts[mapRoomStatus(r)]++);
+  const order = [['dot-ok','Ready'],['dot-minor','Minor'],['dot-pending','Pending'],['dot-bad','Not ready'],['dot-blank','Not assessed']];
+  const strip = document.getElementById('amcStatusStrip');
+  if (!strip) return;
+  strip.innerHTML = order.filter(([c])=>counts[c]>0).map(([c,label]) =>
+    `<span class="amc-status-chip"><span class="dot" style="background:${AMC_STATUS_FILL[c]};width:9px;height:9px"></span>${label} <span class="n">${counts[c]}</span></span>`
+  ).join('');
+}
+
+let _amcRooms = [];
+function renderAMCBubbles(liveRooms){
+  amcBuildStatusStrip(liveRooms);
+  amcBindPopup();
+  _amcRooms = liveRooms;
+  const field = document.getElementById('amcBubbleField');
+  if (!field) return;
+  const W = field.clientWidth, H = field.clientHeight;
+
+  // Flat circle packing — no section-level grouping in the layout. A
+  // nested root->section->room hierarchy forces d3.pack() to carve out a
+  // separate rigid circular boundary per section, and with only 7
+  // sections those boundaries land in a tidy, grid-like arrangement no
+  // matter how tight the padding is (tested this). Packing all rooms
+  // together as one population produces an organic, irregular shape.
+  const data = { name: 'root', children: liveRooms.map(r => ({ name: r.space, value: amcBubbleValue(r), room: r })) };
+  const root = d3.hierarchy(data).sum(d => d.value || 0).sort((a,b) => b.value - a.value);
+  d3.pack().size([W, H]).padding(4)(root);
+
+  field.innerHTML = '';
+  root.leaves().forEach(n => {
+    const r = n.data.room;
+    const cls = mapRoomStatus(r);
+    const bg = AMC_STATUS_FILL[cls];
+    const el = document.createElement('div');
+    el.className = 'amc-bubble';
+    el.style.width = (n.r*2)+'px';
+    el.style.height = (n.r*2)+'px';
+    el.style.left = (n.x - n.r)+'px';
+    el.style.top = (n.y - n.r)+'px';
+    el.style.background = bg;
+    const pad = Math.max(8, n.r * 0.3);
+    const textColor = amcTextColorFor(bg);
+    const shadow = textColor === '#ffffff' ? 'text-shadow:0 1px 2px rgba(0,0,0,.3)' : '';
+    el.innerHTML = `<span class="amc-bubble-label" style="font-size:${AMC_LABEL_FONT_SIZE}px;padding:${pad.toFixed(0)}px;color:${textColor};${shadow}">${r.space}</span>`;
+    el.onclick = () => amcOpenPopup(r);
+    field.appendChild(el);
+  });
+}
+
+function amcOpenPopup(r){
+  document.getElementById('amcPopupIcon').className = 'ti '+roomIcon(r);
+  document.getElementById('amcPopupName').textContent = r.space;
+  document.getElementById('amcPopupMeta').textContent = [r.roomNumber?('Room '+r.roomNumber):null, r.section].filter(Boolean).join(' · ');
+  const opsCls = dotClass(r.SDO?r.SDO.assessment:null);
+  const techCls = dotClass(r.tech?r.tech.assessment:null);
+  document.getElementById('amcPopupOps').innerHTML = `<span class="dot" style="background:${AMC_STATUS_FILL[opsCls]};width:14px;height:14px"></span> ${AMC_STATUS_TEXT[opsCls]}`;
+  document.getElementById('amcPopupTech').innerHTML = `<span class="dot" style="background:${AMC_STATUS_FILL[techCls]};width:14px;height:14px"></span> ${AMC_STATUS_TEXT[techCls]}`;
+  const countsEl = document.getElementById('amcPopupCounts');
+  if (r.deskCount || r.chairCount){ countsEl.style.display='block'; countsEl.textContent = `${r.deskCount||'—'} desks · ${r.chairCount||'—'} chairs`; }
+  else countsEl.style.display='none';
+  const noteEl = document.getElementById('amcPopupNote');
+  if (r.notes){ noteEl.style.display='block'; noteEl.textContent = r.notes; }
+  else noteEl.style.display='none';
+  document.getElementById('amcPopupOverlay').classList.add('show');
+}
+let _amcPopupBound = false;
+function amcBindPopup(){
+  if (_amcPopupBound) return;
+  _amcPopupBound = true;
+  document.getElementById('amcPopupClose').onclick = () => document.getElementById('amcPopupOverlay').classList.remove('show');
+  document.getElementById('amcPopupOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'amcPopupOverlay') e.currentTarget.classList.remove('show');
+  });
 }
 
 function buildEECViewToggle() {
@@ -2492,11 +2719,14 @@ async function loadCampusPanel(code) {
       // once it's actually in the DOM (same two-pass pattern as the map).
       bodyHtml = buildCampusProgress(data.rooms) + buildAECWheel();
     } else if (code === 'AMC') {
-      // Interactive floor map. Geometry lives in CAMPUS_MAP_GEOMETRY;
-      // renderInteractiveMap() does the actual DOM work after this HTML is
-      // in the page (see the post-render hook below, same pattern as
-      // EMC's map).
-      bodyHtml = buildCampusProgress(data.rooms) + buildInteractiveMap(code);
+      // Bubble space selector — replaces the interactive floor map for
+      // AMC. All spaces packed together as one organic mass (not grouped
+      // by section spatially — nested per-section packing produced a
+      // rigid, grid-like arrangement of separate islands no matter how
+      // tight the padding was). Bubble size is derived from how much
+      // room each space's name needs at a constant font, not the other
+      // way around — see buildAMCBubbles()/renderAMCBubbles().
+      bodyHtml = buildCampusProgress(data.rooms) + buildAMCBubbles();
     } else {
       bodyHtml = buildCampusProgress(data.rooms) + emcHtml + buildSectionedTables(data.rooms);
     }
@@ -2513,9 +2743,9 @@ async function loadCampusPanel(code) {
       // width and lay out the ring.
       renderAECWheel(data.rooms);
     } else if (code === 'AMC') {
-      // Container divs from buildInteractiveMap() now exist in the DOM —
-      // safe to measure their real width and actually place rooms.
-      renderInteractiveMap(code, data.rooms);
+      // Bubble field now exists in the DOM — safe to measure its real
+      // width and lay out the pack.
+      renderAMCBubbles(data.rooms);
     }
   } catch(e) {
     panel.innerHTML = `<div class="main"><div class="empty-msg" style="color:var(--red)">Error loading ${code} data. Check the Apps Script URL.</div></div>`;
@@ -2634,7 +2864,7 @@ window.addEventListener('resize', () => {
     if (!activePanel) return;
     const code = activePanel.id.replace('panel-', '');
     if (code === 'AMC' && _campusCache[code]) {
-      renderInteractiveMap(code, _campusCache[code].data.rooms);
+      renderAMCBubbles(_campusCache[code].data.rooms);
     } else if (code === 'AEC' && _campusCache[code]) {
       positionWheelNodes();
     }
