@@ -12,10 +12,6 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="share.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons-300.min.css">
-<!-- d3 (hierarchy + pack only, in practice) — added for the AMC bubble
-     view's circle-packing layout. Nothing else in this file used an
-     external JS library before this. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <style>
 :root{
   --blue:#005E9E;--blue-web:#0083C4;--gold:#E5A810;
@@ -222,16 +218,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .amc-status-chip{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text)}
 .amc-status-chip .dot{width:9px;height:9px}
 .amc-status-chip .n{color:var(--muted);font-weight:500}
-/* The dashboard's shared .main column is 800px — deliberately narrow for
-   reading tables/text. That's too narrow for 76 simultaneously-visible,
-   guaranteed-legible bubbles (verified: below ~950px wide, most bubbles
-   would have to be compressed under their own text-fit minimum, which
-   defeats the whole point). This breaks the bubble section out to a
-   wider, viewport-relative width without affecting any other panel —
-   standard "full width relative to viewport, not to parent" technique. */
-.amc-breakout{position:relative;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw;width:100vw}
-.amc-breakout-inner{max-width:1400px;margin:0 auto;padding:0 20px}
-@media (min-width:720px){ .amc-breakout-inner{padding:0 30px} }
+/* Stays within the shared .main column — same max-width as the progress
+   bar above it (800px), rather than breaking out wider. That column is
+   too narrow for a true circle-packed layout at 76 bubbles' full
+   required sizes, so the layout algorithm below (amcOrganicLayout) is a
+   width-bounded, greedy "nestle into the gaps" placement instead of
+   circle-packing — organic-looking without needing more width than the
+   rest of the dashboard uses. */
 .amc-bubble-field{position:relative;width:100%;border:1px solid var(--border);border-radius:14px;background:var(--bg)}
 .amc-bubble{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;
   cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);transition:box-shadow .15s,transform .15s;overflow:hidden}
@@ -1450,52 +1443,70 @@ function amcOwnDiameter(r){
   if (chairs > 0) d += Math.min(30, chairs*0.6);
   return Math.max(60, d);
 }
-function amcBubbleValue(r){
-  const radius = amcOwnDiameter(r)/2;
-  return radius*radius; // squared: d3.pack() sizes circles by area, not radius
-}
 
-// Row-based fallback layout: places every bubble at its full required
-// diameter (never smaller) and wraps to a new row when the current one
-// would exceed the available width — trading height for width instead
-// of ever compressing a bubble. Used only when the organic pack layout
-// (below) can't fit everyone at their required size within the current
-// width; see the shortfall check in renderAMCBubbles().
-function amcShelfLayout(rooms, W, gap){
-  const items = rooms.map(r => ({ room: r, d: amcOwnDiameter(r) }));
-  const rows = [];
-  let current = [], x = 0;
-  items.forEach(it => {
-    if (current.length && x + it.d > W) {
-      rows.push({ items: current, width: x - gap });
-      current = []; x = 0;
-    }
-    current.push({ ...it, xOffset: x });
-    x += it.d + gap;
-  });
-  if (current.length) rows.push({ items: current, width: x - gap });
-
+// Width-bounded, greedy "bottom-left fill" circle placement — every
+// bubble at its full required radius, never scaled down or compressed,
+// and never exceeding the given width. This replaced an earlier attempt
+// that tried true circle-packing (d3.pack()) with a row-wrapping
+// fallback for narrow widths: that produced a nice organic blob when
+// there was enough width to spare, but pack() is fundamentally capped by
+// min(width,height)² of usable area — once the dashboard's shared .main
+// column (800px) became the fixed width instead of a special wider
+// breakout, that safe area was essentially never enough, so the "narrow
+// screen" fallback became the everyday case. That fallback was uniform
+// left-to-right rows, which reads as a rigid grid, not bubbles. This
+// algorithm has no such fallback because it doesn't need one: circles
+// nestle into the gaps between already-placed neighbors (not just
+// stacked in rows), largest-first, which keeps the boundary irregular
+// and organic at any width while still guaranteeing every bubble is at
+// least its own required size — verified by rendering the actual output
+// at both a typical desktop width and a narrow phone width.
+function amcOrganicLayout(rooms, W, gap){
+  const items = rooms.map(r => ({ room: r, r: amcOwnDiameter(r)/2 }))
+                      .sort((a,b) => b.r - a.r);
   const placed = [];
-  let y = 0;
-  rows.forEach(row => {
-    const rowH = Math.max(...row.items.map(it => it.d));
-    const centerOffset = (W - row.width) / 2;
-    row.items.forEach(it => {
-      placed.push({ room: it.room, x: centerOffset + it.xOffset + it.d/2, y: y + rowH/2, r: it.d/2 });
+
+  function overlaps(x, y, r){
+    for (let i=0; i<placed.length; i++){
+      const dx = x-placed[i].x, dy = y-placed[i].y;
+      const minDist = r + placed[i].r + gap;
+      if (dx*dx + dy*dy < minDist*minDist - 0.001) return true;
+    }
+    return false;
+  }
+
+  items.forEach(it => {
+    const r = it.r;
+    const candidates = [];
+    const step = Math.max(3, r/3);
+    for (let x = r; x <= W-r; x += step) candidates.push({x, y: r});
+    placed.forEach(p => {
+      const d = p.r + r + gap;
+      for (let a = 0; a < Math.PI*2; a += Math.PI/20) {
+        const x = p.x + d*Math.cos(a), y = p.y + d*Math.sin(a);
+        if (x-r >= -0.01 && x+r <= W+0.01 && y >= r-0.01) candidates.push({x, y});
+      }
     });
-    y += rowH + gap;
+    const valid = candidates.filter(c => !overlaps(c.x, c.y, r));
+    let best;
+    if (valid.length === 0) {
+      const maxY = placed.length ? Math.max(...placed.map(p => p.y+p.r)) : 0;
+      best = { x: W/2, y: maxY + r + gap };
+    } else {
+      valid.sort((a,b) => a.y - b.y || Math.abs(a.x-W/2) - Math.abs(b.x-W/2));
+      best = valid[0];
+    }
+    placed.push({ room: it.room, x: best.x, y: best.y, r });
   });
-  return { placed, contentH: y - gap };
+
+  const contentH = placed.length ? Math.max(...placed.map(p => p.y+p.r)) : 0;
+  return { placed, contentH };
 }
 
 function buildAMCBubbles() {
   return `
-    <div class="amc-breakout">
-      <div class="amc-breakout-inner">
-        <div class="amc-status-strip" id="amcStatusStrip"></div>
-        <div class="amc-bubble-field" id="amcBubbleField"></div>
-      </div>
-    </div>
+    <div class="amc-status-strip" id="amcStatusStrip"></div>
+    <div class="amc-bubble-field" id="amcBubbleField"></div>
     <div class="amc-popup-overlay" id="amcPopupOverlay">
       <div class="amc-popup">
         <div class="amc-popup-close" id="amcPopupClose">&#10005;</div>
@@ -1543,52 +1554,19 @@ function renderAMCBubbles(liveRooms){
   const W = field.clientWidth;
   const PAD = window.innerWidth >= 720 ? 30 : 16;
 
-  // Flat circle packing — no section-level grouping in the layout (see
-  // the earlier note on why nesting by section produced a rigid,
-  // grid-like arrangement no matter how tight the padding was).
-  //
-  // Two independent safety checks decide whether the organic pack is
-  // actually safe to use at this width, rather than trusting one number:
-  //
-  // 1. A conservative ANALYTICAL pre-check, computed straight from this
-  //    render's own room list — not a hardcoded pixel breakpoint, so it
-  //    stays correct if the room count or name lengths ever change. Sum
-  //    every room's own required circle area and assume a deliberately
-  //    pessimistic 50% packing efficiency (circle packing with widely
-  //    varying sizes rarely does better than that) to get a safe minimum
-  //    width. Below it, skip the pack attempt entirely.
-  // 2. A post-hoc check on the pack's *actual* output, in case reality
-  //    still undershoots that estimate for some reason.
-  // Either one failing sends us to the row layout instead — every bubble
-  // at full required size, wrapping to more rows rather than shrinking.
-  const totalArea = liveRooms.reduce((sum, r) => { const rad = amcOwnDiameter(r)/2; return sum + Math.PI*rad*rad; }, 0);
-  const ASSUMED_PACK_EFFICIENCY = 0.5;
-  const safeWidthThreshold = 2 * Math.sqrt(totalArea / (Math.PI * ASSUMED_PACK_EFFICIENCY));
-
-  let placed, contentW, contentH;
-  if (W < safeWidthThreshold) {
-    const shelf = amcShelfLayout(liveRooms, W - 2*PAD, 6);
-    placed = shelf.placed.map(p => ({ room: p.room, x: p.x, y: p.y, r: p.r }));
-  } else {
-    const data = { name: 'root', children: liveRooms.map(r => ({ name: r.space, value: amcBubbleValue(r), room: r })) };
-    const root = d3.hierarchy(data).sum(d => d.value || 0).sort((a,b) => b.value - a.value);
-    d3.pack().size([W, W*3]).padding(4)(root);
-    const packLeaves = root.leaves();
-    const packShortfall = packLeaves.some(n => n.r*2 < amcOwnDiameter(n.data.room) - 0.5);
-    if (!packShortfall) {
-      placed = packLeaves.map(n => ({ room: n.data.room, x: n.x, y: n.y, r: n.r }));
-    } else {
-      const shelf = amcShelfLayout(liveRooms, W - 2*PAD, 6);
-      placed = shelf.placed.map(p => ({ room: p.room, x: p.x, y: p.y, r: p.r }));
-    }
-  }
+  // See amcOrganicLayout() above for why this is a single greedy
+  // placement rather than a "try circle-packing, fall back to rows"
+  // hybrid — this is always safe (every bubble at its own required
+  // size) and always organic-looking, at any width, so there's no mode
+  // to switch between.
+  const { placed } = amcOrganicLayout(liveRooms, W - 2*PAD, 6);
 
   let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
   placed.forEach(p => {
     minX = Math.min(minX, p.x-p.r); maxX = Math.max(maxX, p.x+p.r);
     minY = Math.min(minY, p.y-p.r); maxY = Math.max(maxY, p.y+p.r);
   });
-  contentW = maxX-minX; contentH = maxY-minY;
+  const contentW = maxX-minX, contentH = maxY-minY;
   const offsetX = PAD + (Math.max(0, W - 2*PAD - contentW))/2 - minX; // center horizontally within the padded width
   const offsetY = PAD - minY; // anchor to the top, not centered vertically
 
