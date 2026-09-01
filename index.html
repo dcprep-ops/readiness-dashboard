@@ -222,7 +222,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .amc-status-chip{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text)}
 .amc-status-chip .dot{width:9px;height:9px}
 .amc-status-chip .n{color:var(--muted);font-weight:500}
-.amc-bubble-field{position:relative;width:100%;height:1300px;border:1px solid var(--border);border-radius:14px;background:var(--bg)}
+/* The dashboard's shared .main column is 800px — deliberately narrow for
+   reading tables/text. That's too narrow for 76 simultaneously-visible,
+   guaranteed-legible bubbles (verified: below ~950px wide, most bubbles
+   would have to be compressed under their own text-fit minimum, which
+   defeats the whole point). This breaks the bubble section out to a
+   wider, viewport-relative width without affecting any other panel —
+   standard "full width relative to viewport, not to parent" technique. */
+.amc-breakout{position:relative;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw;width:100vw}
+.amc-breakout-inner{max-width:1400px;margin:0 auto;padding:0 20px}
+@media (min-width:720px){ .amc-breakout-inner{padding:0 30px} }
+.amc-bubble-field{position:relative;width:100%;border:1px solid var(--border);border-radius:14px;background:var(--bg)}
 .amc-bubble{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;
   cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);transition:box-shadow .15s,transform .15s;overflow:hidden}
 .amc-bubble:hover{box-shadow:0 4px 10px rgba(0,0,0,.18);transform:scale(1.03);z-index:10}
@@ -1430,18 +1440,62 @@ function amcRequiredDiameter(text){
   }
   return hi;
 }
-function amcBubbleValue(r){
+// The room's own required diameter — full-size, never compressed. Both
+// the organic pack layout and the row-fallback layout (below) size off
+// this same number, so "does this bubble meet its minimum" always means
+// the same thing regardless of which layout is actually in use.
+function amcOwnDiameter(r){
   let d = amcRequiredDiameter(r.space);
   const chairs = parseInt(r.chairCount) || 0;
   if (chairs > 0) d += Math.min(30, chairs*0.6);
-  const radius = Math.max(30, d/2);
+  return Math.max(60, d);
+}
+function amcBubbleValue(r){
+  const radius = amcOwnDiameter(r)/2;
   return radius*radius; // squared: d3.pack() sizes circles by area, not radius
+}
+
+// Row-based fallback layout: places every bubble at its full required
+// diameter (never smaller) and wraps to a new row when the current one
+// would exceed the available width — trading height for width instead
+// of ever compressing a bubble. Used only when the organic pack layout
+// (below) can't fit everyone at their required size within the current
+// width; see the shortfall check in renderAMCBubbles().
+function amcShelfLayout(rooms, W, gap){
+  const items = rooms.map(r => ({ room: r, d: amcOwnDiameter(r) }));
+  const rows = [];
+  let current = [], x = 0;
+  items.forEach(it => {
+    if (current.length && x + it.d > W) {
+      rows.push({ items: current, width: x - gap });
+      current = []; x = 0;
+    }
+    current.push({ ...it, xOffset: x });
+    x += it.d + gap;
+  });
+  if (current.length) rows.push({ items: current, width: x - gap });
+
+  const placed = [];
+  let y = 0;
+  rows.forEach(row => {
+    const rowH = Math.max(...row.items.map(it => it.d));
+    const centerOffset = (W - row.width) / 2;
+    row.items.forEach(it => {
+      placed.push({ room: it.room, x: centerOffset + it.xOffset + it.d/2, y: y + rowH/2, r: it.d/2 });
+    });
+    y += rowH + gap;
+  });
+  return { placed, contentH: y - gap };
 }
 
 function buildAMCBubbles() {
   return `
-    <div class="amc-status-strip" id="amcStatusStrip"></div>
-    <div class="amc-bubble-field" id="amcBubbleField"></div>
+    <div class="amc-breakout">
+      <div class="amc-breakout-inner">
+        <div class="amc-status-strip" id="amcStatusStrip"></div>
+        <div class="amc-bubble-field" id="amcBubbleField"></div>
+      </div>
+    </div>
     <div class="amc-popup-overlay" id="amcPopupOverlay">
       <div class="amc-popup">
         <div class="amc-popup-close" id="amcPopupClose">&#10005;</div>
@@ -1486,31 +1540,73 @@ function renderAMCBubbles(liveRooms){
   _amcRooms = liveRooms;
   const field = document.getElementById('amcBubbleField');
   if (!field) return;
-  const W = field.clientWidth, H = field.clientHeight;
+  const W = field.clientWidth;
+  const PAD = window.innerWidth >= 720 ? 30 : 16;
 
-  // Flat circle packing — no section-level grouping in the layout. A
-  // nested root->section->room hierarchy forces d3.pack() to carve out a
-  // separate rigid circular boundary per section, and with only 7
-  // sections those boundaries land in a tidy, grid-like arrangement no
-  // matter how tight the padding is (tested this). Packing all rooms
-  // together as one population produces an organic, irregular shape.
-  const data = { name: 'root', children: liveRooms.map(r => ({ name: r.space, value: amcBubbleValue(r), room: r })) };
-  const root = d3.hierarchy(data).sum(d => d.value || 0).sort((a,b) => b.value - a.value);
-  d3.pack().size([W, H]).padding(4)(root);
+  // Flat circle packing — no section-level grouping in the layout (see
+  // the earlier note on why nesting by section produced a rigid,
+  // grid-like arrangement no matter how tight the padding was).
+  //
+  // Two independent safety checks decide whether the organic pack is
+  // actually safe to use at this width, rather than trusting one number:
+  //
+  // 1. A conservative ANALYTICAL pre-check, computed straight from this
+  //    render's own room list — not a hardcoded pixel breakpoint, so it
+  //    stays correct if the room count or name lengths ever change. Sum
+  //    every room's own required circle area and assume a deliberately
+  //    pessimistic 50% packing efficiency (circle packing with widely
+  //    varying sizes rarely does better than that) to get a safe minimum
+  //    width. Below it, skip the pack attempt entirely.
+  // 2. A post-hoc check on the pack's *actual* output, in case reality
+  //    still undershoots that estimate for some reason.
+  // Either one failing sends us to the row layout instead — every bubble
+  // at full required size, wrapping to more rows rather than shrinking.
+  const totalArea = liveRooms.reduce((sum, r) => { const rad = amcOwnDiameter(r)/2; return sum + Math.PI*rad*rad; }, 0);
+  const ASSUMED_PACK_EFFICIENCY = 0.5;
+  const safeWidthThreshold = 2 * Math.sqrt(totalArea / (Math.PI * ASSUMED_PACK_EFFICIENCY));
+
+  let placed, contentW, contentH;
+  if (W < safeWidthThreshold) {
+    const shelf = amcShelfLayout(liveRooms, W - 2*PAD, 6);
+    placed = shelf.placed.map(p => ({ room: p.room, x: p.x, y: p.y, r: p.r }));
+  } else {
+    const data = { name: 'root', children: liveRooms.map(r => ({ name: r.space, value: amcBubbleValue(r), room: r })) };
+    const root = d3.hierarchy(data).sum(d => d.value || 0).sort((a,b) => b.value - a.value);
+    d3.pack().size([W, W*3]).padding(4)(root);
+    const packLeaves = root.leaves();
+    const packShortfall = packLeaves.some(n => n.r*2 < amcOwnDiameter(n.data.room) - 0.5);
+    if (!packShortfall) {
+      placed = packLeaves.map(n => ({ room: n.data.room, x: n.x, y: n.y, r: n.r }));
+    } else {
+      const shelf = amcShelfLayout(liveRooms, W - 2*PAD, 6);
+      placed = shelf.placed.map(p => ({ room: p.room, x: p.x, y: p.y, r: p.r }));
+    }
+  }
+
+  let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+  placed.forEach(p => {
+    minX = Math.min(minX, p.x-p.r); maxX = Math.max(maxX, p.x+p.r);
+    minY = Math.min(minY, p.y-p.r); maxY = Math.max(maxY, p.y+p.r);
+  });
+  contentW = maxX-minX; contentH = maxY-minY;
+  const offsetX = PAD + (Math.max(0, W - 2*PAD - contentW))/2 - minX; // center horizontally within the padded width
+  const offsetY = PAD - minY; // anchor to the top, not centered vertically
+
+  field.style.height = Math.round(contentH + PAD*2) + 'px';
 
   field.innerHTML = '';
-  root.leaves().forEach(n => {
-    const r = n.data.room;
+  placed.forEach(p => {
+    const r = p.room;
     const cls = mapRoomStatus(r);
     const bg = AMC_STATUS_FILL[cls];
     const el = document.createElement('div');
     el.className = 'amc-bubble';
-    el.style.width = (n.r*2)+'px';
-    el.style.height = (n.r*2)+'px';
-    el.style.left = (n.x - n.r)+'px';
-    el.style.top = (n.y - n.r)+'px';
+    el.style.width = (p.r*2)+'px';
+    el.style.height = (p.r*2)+'px';
+    el.style.left = (p.x + offsetX - p.r)+'px';
+    el.style.top = (p.y + offsetY - p.r)+'px';
     el.style.background = bg;
-    const pad = Math.max(8, n.r * 0.3);
+    const pad = Math.max(8, p.r * 0.3);
     const textColor = amcTextColorFor(bg);
     const shadow = textColor === '#ffffff' ? 'text-shadow:0 1px 2px rgba(0,0,0,.3)' : '';
     el.innerHTML = `<span class="amc-bubble-label" style="font-size:${AMC_LABEL_FONT_SIZE}px;padding:${pad.toFixed(0)}px;color:${textColor};${shadow}">${r.space}</span>`;
